@@ -1,0 +1,9 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/Release
+/Debug
+/.vs/FFmpegMFT/v15
+/FFmpegMFT/Debug
+/FFmpegMFT/Release
