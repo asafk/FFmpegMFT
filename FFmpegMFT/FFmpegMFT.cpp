@@ -6,7 +6,12 @@
 
 
 FFmpegMFT::FFmpegMFT(void) :
-    m_cRef(1)
+    m_cRef(1),
+	m_avCodec(NULL),
+	m_avParser(NULL),
+	m_avContext(NULL),
+	m_avFrame(NULL),
+	m_avPkt(NULL)
 {
 	OutputDebugString(_T("\n\nFFmpegMFT\n\n"));
 }
@@ -230,12 +235,14 @@ HRESULT FFmpegMFT::GetOutputStreamInfo(
         //   - MFT provides samples with whole units of data.  This means that each sample 
         //     contains a whole uncompressed frame.
         //   - The samples returned will have only a single buffer.
+
         //   - The MFT provides samples and there is no need to give it output samples to 
         //     fill in during its ProcessOutput() calls.
         pStreamInfo->dwFlags =
             MFT_OUTPUT_STREAM_WHOLE_SAMPLES |                
-            MFT_OUTPUT_STREAM_SINGLE_SAMPLE_PER_BUFFER |    
-            MFT_OUTPUT_STREAM_PROVIDES_SAMPLES ;
+            MFT_OUTPUT_STREAM_SINGLE_SAMPLE_PER_BUFFER |
+			MFT_OUTPUT_STREAM_FIXED_SAMPLE_SIZE;
+           /* MFT_OUTPUT_STREAM_PROVIDES_SAMPLES ;*/
 
         // the cbAlignment variable contains information about byte alignment of the sample 
         // buffers, if one is needed.  Zero indicates that no specific alignment is needed.
@@ -353,28 +360,12 @@ HRESULT FFmpegMFT::GetInputAvailableType(
             BREAK_ON_FAIL(hr);
         }
 
-        // If the output is not set, then return one of the supported media types.
-        // Otherwise return the media type previously set.
-        if (m_pOutputType == NULL)
-        {
-            //hr = GetSupportedMediaType(dwTypeIndex, &pmt);
-			//TODO
-            BREAK_ON_FAIL(hr);
 
-            // return the resulting media type
-            *ppType = pmt.Detach();
-        }
-        else if(dwTypeIndex == 0)
-        {
-            // return the set output type
-            *ppType = m_pOutputType.Detach();
-        }
-        else
-        {
-            // if the output type is set, the MFT supports only one input type, and the 
-            // index cannot be more than 0
-            hr = MF_E_NO_MORE_TYPES;
-        }
+        hr = GetSupportedInputMediaType(dwTypeIndex, &pmt);
+        BREAK_ON_FAIL(hr);
+
+        // return the resulting media type
+        *ppType = pmt.Detach();
     }
     while(false);
 
@@ -413,23 +404,13 @@ HRESULT FFmpegMFT::GetOutputAvailableType(
             hr = MF_E_INVALIDSTREAMNUMBER;
             BREAK_ON_FAIL(hr);
         }
+		
+    	hr = GetSupportedOutputMediaType(dwTypeIndex, &pmt);
+        BREAK_ON_FAIL(hr);
 
-        // If the input is not set, then return one of the supported media types.
-        // Otherwise return the media type previously set.
-        if (m_pInputType == NULL)
-        {
-        	hr = GetSupportedOutputMediaType(dwTypeIndex, &pmt);
-            BREAK_ON_FAIL(hr);
-
-            // return the resulting media type
-            *ppType = pmt;
-            (*ppType)->AddRef();
-        }
-        else
-        {
-            *ppType = m_pInputType;
-            (*ppType)->AddRef();
-        }
+        // return the resulting media type
+        *ppType = pmt;
+        (*ppType)->AddRef();
     }
     while(false);
 
@@ -462,9 +443,12 @@ HRESULT FFmpegMFT::SetInputType(DWORD dwInputStreamID, IMFMediaType* pType,
             BREAK_ON_FAIL(hr);
         }
 
-        // verify that the specified media type is acceptible to the MFT
-        //TODO
-        BREAK_ON_FAIL(hr);
+		if (m_pInputType == pType)
+			break;
+
+        // verify that the specified media type is acceptable to the MFT
+        hr = CheckInputMediaType(pType);
+		BREAK_ON_FAIL(hr);
 
         // If the MFT is already processing a sample internally, fail out, since the MFT
         // can't change formats on the fly.
@@ -474,38 +458,18 @@ HRESULT FFmpegMFT::SetInputType(DWORD dwInputStreamID, IMFMediaType* pType,
             BREAK_ON_FAIL(hr);
         }
 
-        // Make sure that the input media type is the same as the output type (if the 
-        // output is set).  If the type passed in is NULL, skip this check since NULL
-        // clears the type.
-        if (pType != NULL && m_pOutputType != NULL)
-        {
-            BOOL result = FALSE;
-            hr = pType->Compare(pTypeAttributes, MF_ATTRIBUTES_MATCH_INTERSECTION, &result);
-            BREAK_ON_FAIL(hr);
-
-            // if the types don't match, return an error code
-            if(!result)
-            {
-                hr = MF_E_INVALIDMEDIATYPE;
-                break;
-            }
-        }
-
         // If we got here, then the media type is acceptable - set it if the caller
         // explicitly tells us to set it, and is not just checking for compatible
         // types.
         if (dwFlags != MFT_SET_TYPE_TEST_ONLY)
         {
-            m_pInputType = pType;
-            
-
+            m_pInputType = pType;         
         }
     }
     while(false);
     
     return hr;
 }
-
 
 
 //
@@ -535,8 +499,11 @@ HRESULT FFmpegMFT::SetOutputType(
             BREAK_ON_FAIL(hr);
         }
 
-        // verify that the specified media type is acceptible to the MFT
-		//TODO
+		if (m_pOutputType == pType)
+			break;
+
+       // verify that the specified media type is acceptable to the MFT
+        hr = CheckOutputMediaType(pType);
         BREAK_ON_FAIL(hr);
 
         // If the MFT is already processing a sample internally, fail out, since the
@@ -544,15 +511,6 @@ HRESULT FFmpegMFT::SetOutputType(
         if (m_pSample != NULL)
         {
             hr = MF_E_TRANSFORM_CANNOT_CHANGE_MEDIATYPE_WHILE_PROCESSING;
-            BREAK_ON_FAIL(hr);
-        }
-
-        // Make sure that the media type is not NULL, and that the input media type
-        // is the same as the output type (if the input is set).
-        if (pType != NULL && m_pInputType != NULL)
-        {
-            DWORD flags = 0;
-            hr = pType->IsEqual(m_pInputType, &flags);
             BREAK_ON_FAIL(hr);
         }
 
@@ -856,15 +814,132 @@ HRESULT FFmpegMFT::ProcessOutput(
         BREAK_ON_NULL(m_pSample, MF_E_TRANSFORM_NEED_MORE_INPUT);
 
 
+		//input to buffer
+		CComPtr<IMFMediaBuffer> pInputMediaBuffer;
+		hr = m_pSample->GetBufferByIndex(0, &pInputMediaBuffer);
+		BREAK_ON_FAIL(hr);
+
+		IMFSample* outputSample = pOutputSampleBuffer[0].pSample;
+		CComPtr<IMFMediaBuffer> pOutputMediaBuffer;
+		hr = outputSample->GetBufferByIndex(0, &pOutputMediaBuffer);
+		BREAK_ON_FAIL(hr);
+
+
+		///do the decoding
+		//decode(pInputMediaBuffer,pOutputMediaBuffer);
+
+
+		LONGLONG sampleTime;
+		hr = m_pSample->GetSampleTime(&sampleTime);
+		BREAK_ON_FAIL(hr);
+		hr = outputSample->SetSampleTime(sampleTime);
+		BREAK_ON_FAIL(hr);
+
+		m_pSample.Release();
         BREAK_ON_FAIL(hr);
 
-        // Detach the output sample from the MFT and put the pointer for
-        // the processed sample into the output buffer
-        pOutputSampleBuffer[0].pSample = m_pSample.Detach();
+        //// Detach the output sample from the MFT and put the pointer for
+        //// the processed sample into the output buffer
+        //pOutputSampleBuffer[0].pSample = m_pSample.Detach();
 
-        // Set status flags for output
-        pOutputSampleBuffer[0].dwStatus = 0;
-        *pdwStatus = 0;
+        //// Set status flags for output
+        //pOutputSampleBuffer[0].dwStatus = 0;
+        //*pdwStatus = 0;
+    }
+    while(false);
+
+    return hr;
+}
+
+HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOutputMediaBuffer)
+{
+	HRESULT hr = S_OK;
+	m_avPkt = av_packet_alloc();
+    if (!m_avPkt)
+        goto clear;
+
+	/* find the HEVC video decoder */
+    m_avCodec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
+    if (!m_avCodec) {
+        goto clear;
+    }
+
+	m_avContext = avcodec_alloc_context3(m_avCodec);
+    if (!m_avContext) {
+        goto clear;
+    }
+
+	 /* open it */
+    if (avcodec_open2(m_avContext, m_avCodec, NULL) < 0) {
+        goto clear;
+    }
+
+	m_avFrame = av_frame_alloc();
+    if (!m_avFrame) {
+        goto clear;
+    }
+
+	/*m_avPkt->data = m_pSample->
+	m_avPkt->size = */
+
+	clear:
+	{
+		avcodec_free_context(&m_avContext);
+		av_packet_free(&m_avPkt);
+	}
+
+	return hr;
+
+}
+
+
+//
+// Construct and return a partial media type with the specified index from the list of media
+// types supported by this MFT.
+//
+HRESULT FFmpegMFT::GetSupportedInputMediaType(
+    DWORD           dwTypeIndex, 
+    IMFMediaType**  ppMT)
+{
+    HRESULT hr = S_OK;
+    CComPtr<IMFMediaType> pmt;
+
+    do
+    {
+        // create a new media type object
+        hr = MFCreateMediaType(&pmt);
+        BREAK_ON_FAIL(hr);
+
+        // set the major type of the media type to video
+        hr = pmt->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+        BREAK_ON_FAIL(hr);
+
+
+  //      if(dwTypeIndex == 0) //H.264
+  //      {
+  //          hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264);
+  //      }
+		//else if(dwTypeIndex == 1) //HEVC
+  //      {
+  //          hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H265); //MFVideoFormat_HEVC
+  //      }
+
+		//TODO: fix dynamic , now it's hard coded
+        if(dwTypeIndex == 0) //HEVC
+        {
+           hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H265); //MFVideoFormat_HEVC
+		}
+        else 
+        { 
+            // if we don't have any more media types, return an error signifying
+            // that there is no media type with that index
+            hr = MF_E_NO_MORE_TYPES;
+        }
+        BREAK_ON_FAIL(hr);
+
+        // detach the underlying IUnknown pointer from the pmt CComPtr without
+        // releasing the pointer so that we can return that object to the caller.
+        *ppMT = pmt.Detach();
     }
     while(false);
 
@@ -872,8 +947,6 @@ HRESULT FFmpegMFT::ProcessOutput(
 }
 
 
-
-//
 // Construct and return a partial media type with the specified index from the list of media
 // types supported by this MFT.
 //
@@ -896,14 +969,18 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
 
         // set the subtype of the video type by index.  The indexes of the media types
         // that are supported by this filter are:  0 - UYVY, 1 - NV12
-        if(dwTypeIndex == 0)
+   /*     if(dwTypeIndex == 0)
         {
             hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_UYVY);
         }
         else if(dwTypeIndex == 1)
         {
             hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_NV12);
-        } 
+        } */
+		if(dwTypeIndex == 0)
+        {
+            hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_NV12);
+        }
         else 
         { 
             // if we don't have any more media types, return an error signifying
@@ -911,6 +988,43 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
             hr = MF_E_NO_MORE_TYPES;
         }
         BREAK_ON_FAIL(hr);
+
+		hr = pmt->SetUINT32(MF_MT_FIXED_SIZE_SAMPLES, TRUE);
+		BREAK_ON_FAIL(hr);
+		hr = pmt->SetUINT32(MF_MT_ALL_SAMPLES_INDEPENDENT, TRUE);
+		BREAK_ON_FAIL(hr);
+		hr = pmt->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
+		BREAK_ON_FAIL(hr);
+
+		//depend on the input
+		if(m_pInputType != NULL)
+		{
+			UINT32 width, height;
+			hr = MFGetAttributeSize(m_pInputType, MF_MT_FRAME_SIZE, &width, &height);
+			BREAK_ON_FAIL(hr);
+			hr = MFSetAttributeSize(pmt, MF_MT_FRAME_SIZE, width, height);
+			BREAK_ON_FAIL(hr);
+			hr = pmt->SetUINT32(MF_MT_DEFAULT_STRIDE, width);
+			BREAK_ON_FAIL(hr);
+			UINT32 framerate_n, framerate_d;
+			hr = MFGetAttributeRatio(m_pInputType, MF_MT_FRAME_RATE, &framerate_n, &framerate_d);
+			BREAK_ON_FAIL(hr);
+			hr = MFSetAttributeRatio(pmt, MF_MT_FRAME_RATE, framerate_n, framerate_d);
+			BREAK_ON_FAIL(hr);
+		}
+
+		MFRatio pixelAspectRatio {1, 1};
+		hr = MFSetAttributeRatio(pmt, MF_MT_PIXEL_ASPECT_RATIO, pixelAspectRatio.Numerator, pixelAspectRatio.Denominator);
+		BREAK_ON_FAIL(hr);
+		hr = pmt->SetUINT32(MF_MT_ORIGINAL_4CC, 1129727304);
+		BREAK_ON_FAIL(hr);
+		hr = pmt->SetUINT32(MF_MT_SAMPLE_SIZE, 3110400);
+		BREAK_ON_FAIL(hr);		
+		hr = pmt->SetUINT32(MF_MT_VIDEO_NOMINAL_RANGE, 2);
+		BREAK_ON_FAIL(hr);
+		hr = pmt->SetUINT32(MF_MT_VIDEO_ROTATION, MFVideoRotationFormat_0);
+		BREAK_ON_FAIL(hr);
+
 
         // detach the underlying IUnknown pointer from the pmt CComPtr without
         // releasing the pointer so that we can return that object to the caller.
@@ -922,14 +1036,10 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
 }
 
 
-
-
-
-
 //
 // Description: Validates a media type for this transform.
 //
-HRESULT FFmpegMFT::CheckMediaType(IMFMediaType* pmt)
+HRESULT FFmpegMFT::CheckOutputMediaType(IMFMediaType* pmt)
 {
     GUID majorType = GUID_NULL;
     GUID subtype = GUID_NULL;
@@ -962,6 +1072,67 @@ HRESULT FFmpegMFT::CheckMediaType(IMFMediaType* pmt)
         // verify that the specified media type has one of the acceptable subtypes -
         // this filter will accept only NV12 and UYVY uncompressed subtypes.
         if(subtype != MEDIASUBTYPE_NV12 && subtype != MEDIASUBTYPE_UYVY)
+        {
+            hr = MF_E_INVALIDMEDIATYPE;
+            break;
+        }
+
+        // get the requested interlacing format
+        hr = pType->GetUINT32(MF_MT_INTERLACE_MODE, (UINT32*)&interlacingMode);
+        BREAK_ON_FAIL(hr);
+
+        // since we want to deal only with progressive (non-interlaced) frames, make sure
+        // we fail if we get anything but progressive
+        if (interlacingMode != MFVideoInterlace_Progressive)
+        {
+            hr = MF_E_INVALIDMEDIATYPE;
+            break;
+        }
+    }
+    while(false);
+
+    return hr;
+}
+
+
+//
+// Description: Validates a media type for this transform.
+//
+HRESULT FFmpegMFT::CheckInputMediaType(IMFMediaType* pmt)
+{
+    GUID majorType = GUID_NULL;
+    GUID subtype = GUID_NULL;
+    MFVideoInterlaceMode interlacingMode = MFVideoInterlace_Unknown;
+    HRESULT hr = S_OK;
+
+    // store the media type pointer in the CComPtr so that it's reference counter
+    // is incremented and decrimented properly.
+    CComPtr<IMFMediaType> pType = pmt;
+
+    do
+    {
+        BREAK_ON_NULL(pType, E_POINTER);
+
+        // Extract the major type to make sure that the major type is video
+        hr = pType->GetGUID(MF_MT_MAJOR_TYPE, &majorType);
+        BREAK_ON_FAIL(hr);
+
+        if (majorType != MFMediaType_Video)
+        {
+            hr = MF_E_INVALIDMEDIATYPE;
+            break;
+        }
+
+
+        // Extract the subtype to make sure that the subtype is one that we support
+        hr = pType->GetGUID(MF_MT_SUBTYPE, &subtype);
+        BREAK_ON_FAIL(hr);
+
+        // verify that the specified media type has one of the acceptable subtypes -
+        // this filter will accept only H.264/HEVC compressed subtypes.
+        if(InlineIsEqualGUID(subtype, MFVideoFormat_H264) != TRUE && 
+			InlineIsEqualGUID(subtype,MFVideoFormat_H265) != TRUE &&
+			InlineIsEqualGUID(subtype,MFVideoFormat_HEVC) != TRUE )
         {
             hr = MF_E_INVALIDMEDIATYPE;
             break;

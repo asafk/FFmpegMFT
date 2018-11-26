@@ -4,6 +4,11 @@
 #include "atlcore.h"
 #include "atlcomcli.h"
 
+extern "C"
+{
+	#include <libavcodec/avcodec.h>
+}
+
 using namespace ATL;
 
 class FFmpegMFT :  public IMFTransform
@@ -71,6 +76,19 @@ class FFmpegMFT :  public IMFTransform
 
 		// private helper functions
 		HRESULT GetSupportedOutputMediaType(DWORD dwTypeIndex, IMFMediaType** ppmt);
-		HRESULT CheckMediaType(IMFMediaType *pmt);
+		HRESULT GetSupportedInputMediaType(DWORD dwTypeIndex, IMFMediaType** ppmt);
+		HRESULT CheckInputMediaType(IMFMediaType *pmt);
+		HRESULT CheckOutputMediaType(IMFMediaType *pmt);
+
+		/*FFmpeg related members*/
+
+	    AVCodec *m_avCodec;
+	    AVCodecParserContext *m_avParser;
+	    AVCodecContext *m_avContext;
+	    AVFrame *m_avFrame;
+	    AVPacket *m_avPkt;
+
+
+		HRESULT decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOutputMediaBuffer);
 };
 
