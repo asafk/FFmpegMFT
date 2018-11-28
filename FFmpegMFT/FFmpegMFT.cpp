@@ -3,15 +3,12 @@
 
 #include <MMSystem.h>
 #include <uuids.h>
+#include "CBufferLock.h"
 
 
 FFmpegMFT::FFmpegMFT(void) :
-    m_cRef(1),
-	m_avCodec(NULL),
-	m_avParser(NULL),
-	m_avContext(NULL),
-	m_avFrame(NULL),
-	m_avPkt(NULL)
+    m_cRef(1)
+
 {
 	OutputDebugString(_T("\n\nFFmpegMFT\n\n"));
 }
@@ -29,13 +26,13 @@ FFmpegMFT::~FFmpegMFT(void)
 //
 ULONG FFmpegMFT::AddRef()
 {
-	OutputDebugString(_T("\n\nAddRef\n\n"));
+	//OutputDebugString(_T("\n\nAddRef\n\n"));
     return InterlockedIncrement(&m_cRef);
 }
 
 ULONG FFmpegMFT::Release()
 {
-	OutputDebugString(_T("\n\nRelease\n\n"));
+	//OutputDebugString(_T("\n\nRelease\n\n"));
 
     ULONG refCount = InterlockedDecrement(&m_cRef);
     if (refCount == 0)
@@ -48,7 +45,7 @@ ULONG FFmpegMFT::Release()
 
 HRESULT FFmpegMFT::QueryInterface(REFIID riid, void** ppv)
 {
-	OutputDebugString(_T("\n\nQueryInterface\n\n"));
+	//OutputDebugString(_T("\n\nQueryInterface\n\n"));
 
     HRESULT hr = S_OK;
 
@@ -213,7 +210,7 @@ HRESULT FFmpegMFT::GetOutputStreamInfo(
     MFT_OUTPUT_STREAM_INFO *  pStreamInfo)
 {
 
-	OutputDebugString(_T("\n\nGetOutputStreamInfo\n\n"));
+	//OutputDebugString(_T("\n\nGetOutputStreamInfo\n\n"));
     HRESULT hr = S_OK;
 
     do
@@ -342,6 +339,9 @@ HRESULT FFmpegMFT::GetInputAvailableType(
     DWORD           dwTypeIndex, 
     IMFMediaType    **ppType)
 {
+
+	//todo: check this 
+	 return MF_E_NO_MORE_TYPES;
 	OutputDebugString(_T("\n\nGetInputAvailableType\n\n"));
 
     HRESULT hr = S_OK;
@@ -404,6 +404,12 @@ HRESULT FFmpegMFT::GetOutputAvailableType(
             hr = MF_E_INVALIDSTREAMNUMBER;
             BREAK_ON_FAIL(hr);
         }
+
+		if (m_pInputType == NULL)
+	    {
+	        hr = MF_E_TRANSFORM_TYPE_NOT_SET;
+			BREAK_ON_FAIL(hr);
+	    }
 		
     	hr = GetSupportedOutputMediaType(dwTypeIndex, &pmt);
         BREAK_ON_FAIL(hr);
@@ -445,6 +451,12 @@ HRESULT FFmpegMFT::SetInputType(DWORD dwInputStreamID, IMFMediaType* pType,
 
 		if (m_pInputType == pType)
 			break;
+
+		if(pType == NULL) //clear input type
+		{
+			m_pInputType = NULL;
+			break;
+		}
 
         // verify that the specified media type is acceptable to the MFT
         hr = CheckInputMediaType(pType);
@@ -501,6 +513,12 @@ HRESULT FFmpegMFT::SetOutputType(
 
 		if (m_pOutputType == pType)
 			break;
+
+		if(pType == NULL)
+		{
+			m_pOutputType = pType;
+			break;
+		}
 
        // verify that the specified media type is acceptable to the MFT
         hr = CheckOutputMediaType(pType);
@@ -605,7 +623,6 @@ HRESULT FFmpegMFT::GetOutputCurrentType(
 }
 
 
-
 //
 // Check to see if the MFT is ready to accept input samples
 //
@@ -704,6 +721,7 @@ HRESULT FFmpegMFT::ProcessMessage(
     {
         // Flush the MFT - release all samples in it and reset the state
         m_pSample = NULL;
+		
     }
     else if(eMessage ==  MFT_MESSAGE_COMMAND_DRAIN)
     {
@@ -711,17 +729,49 @@ HRESULT FFmpegMFT::ProcessMessage(
         // all of the pending output has been processed. That is the default 
         // behavior of this MFT, so there is nothing to do.
     }
+	else if(eMessage == MFT_MESSAGE_SET_D3D_MANAGER)
+	{
+		// The pipeline should never send this message unless the MFT
+        // has the MF_SA_D3D_AWARE attribute set to TRUE. However, if we
+        // do get this message, it's invalid and we don't implement it.
+        hr = E_NOTIMPL;
+	}
     else if(eMessage == MFT_MESSAGE_NOTIFY_BEGIN_STREAMING)
     {
+		  do
+	    {
+		    // Extract the subtype to make sure that the subtype is one that we support
+		    GUID subtype;
+		    hr = m_pInputType->GetGUID(MF_MT_SUBTYPE, &subtype);
+		    BREAK_ON_FAIL(hr);
+
+		    // verify that the specified media type has one of the acceptable subtypes -
+		    // this filter will accept only H.264/HEVC compressed subtypes.
+		    if(InlineIsEqualGUID(subtype, MFVideoFormat_H264) == TRUE)
+		    {
+			    m_decoder.init("H264");
+		    }
+			else if(InlineIsEqualGUID(subtype,MFVideoFormat_H265) == TRUE || InlineIsEqualGUID(subtype,MFVideoFormat_HEVC) == TRUE )
+			{
+				m_decoder.init("HEVC");
+			}
+			else
+		    {
+			    hr = MF_E_INVALIDMEDIATYPE;
+			    break;
+		    }
+	    }
+	    while (false);
     }
     else if(eMessage == MFT_MESSAGE_NOTIFY_END_STREAMING)
     {
+		m_decoder.release();
     }
     else if(eMessage == MFT_MESSAGE_NOTIFY_END_OF_STREAM)
     {
     }
     else if(eMessage == MFT_MESSAGE_NOTIFY_START_OF_STREAM)
-    {
+    {	  
     }
 
     return hr;
@@ -737,7 +787,7 @@ HRESULT FFmpegMFT::ProcessInput(
     IMFSample*          pSample,
     DWORD               dwFlags)
 {
-	OutputDebugString(_T("\n\nProcessInput\n\n"));
+	//OutputDebugString(_T("\n\nProcessInput\n\n"));
 
     HRESULT hr = S_OK;
     DWORD dwBufferCount = 0;
@@ -788,7 +838,7 @@ HRESULT FFmpegMFT::ProcessOutput(
     MFT_OUTPUT_DATA_BUFFER* pOutputSampleBuffer,
     DWORD*                  pdwStatus)
 {
-	OutputDebugString(_T("\n\nProcessOutput\n\n"));
+	//OutputDebugString(_T("\n\nProcessOutput\n\n"));
 
     HRESULT hr = S_OK;
 
@@ -813,30 +863,41 @@ HRESULT FFmpegMFT::ProcessOutput(
         // input is needed.
         BREAK_ON_NULL(m_pSample, MF_E_TRANSFORM_NEED_MORE_INPUT);
 
-
 		//input to buffer
 		CComPtr<IMFMediaBuffer> pInputMediaBuffer;
-		hr = m_pSample->GetBufferByIndex(0, &pInputMediaBuffer);
+		hr = m_pSample->ConvertToContiguousBuffer(&pInputMediaBuffer);
+		// = m_pSample->GetBufferByIndex(0, &pInputMediaBuffer);
 		BREAK_ON_FAIL(hr);
 
+		//output buffer
 		IMFSample* outputSample = pOutputSampleBuffer[0].pSample;
 		CComPtr<IMFMediaBuffer> pOutputMediaBuffer;
 		hr = outputSample->GetBufferByIndex(0, &pOutputMediaBuffer);
 		BREAK_ON_FAIL(hr);
 
-
 		///do the decoding
-		//decode(pInputMediaBuffer,pOutputMediaBuffer);
+		hr = decode(pInputMediaBuffer,pOutputMediaBuffer);
+		BREAK_ON_FAIL(hr);
 
-
+		//timestamp
 		LONGLONG sampleTime;
 		hr = m_pSample->GetSampleTime(&sampleTime);
 		BREAK_ON_FAIL(hr);
 		hr = outputSample->SetSampleTime(sampleTime);
 		BREAK_ON_FAIL(hr);
 
+		//set duration
+		/*LONGLONG sampleDuration;
+		hr = m_pSample->GetSampleDuration(&sampleDuration);
+		BREAK_ON_FAIL(hr);
+		hr = outputSample->SetSampleDuration(sampleDuration);
+		BREAK_ON_FAIL(hr);
+
+		hr = outputSample->SetUINT32(MFSampleExtension_CleanPoint, 1);
+		BREAK_ON_FAIL(hr);
+		*/
+		//pInputMediaBuffer.Release();
 		m_pSample.Release();
-        BREAK_ON_FAIL(hr);
 
         //// Detach the output sample from the MFT and put the pointer for
         //// the processed sample into the output buffer
@@ -854,42 +915,40 @@ HRESULT FFmpegMFT::ProcessOutput(
 HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOutputMediaBuffer)
 {
 	HRESULT hr = S_OK;
-	m_avPkt = av_packet_alloc();
-    if (!m_avPkt)
-        goto clear;
 
-	/* find the HEVC video decoder */
-    m_avCodec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
-    if (!m_avCodec) {
-        goto clear;
+	CBufferLock videoBuffer(pOutputMediaBuffer);
+
+	BYTE *pIn = NULL;
+	DWORD lenIn = 0;
+
+	BYTE *pOut = NULL;
+	int lenOut = 0;
+    LONG lDefaultStride = 0;
+    LONG lActualStride = 0;
+
+	 hr = GetDefaultStride(m_pOutputType, &lDefaultStride);
+
+    if (SUCCEEDED(hr))
+    {
+        hr = videoBuffer.LockBuffer(lDefaultStride, 1080/*TODO hard coded*/, &pOut, &lActualStride);
     }
 
-	m_avContext = avcodec_alloc_context3(m_avCodec);
-    if (!m_avContext) {
-        goto clear;
+	if (SUCCEEDED(hr))
+    {
+        hr = inputMediaBuffer->Lock(&pIn, NULL, &lenIn);
     }
 
-	 /* open it */
-    if (avcodec_open2(m_avContext, m_avCodec, NULL) < 0) {
-        goto clear;
+	m_decoder.decode(pIn,lenIn,pOut,&lenOut);
+
+	inputMediaBuffer->Unlock();
+
+
+	 if (SUCCEEDED(hr))
+    {
+        hr = pOutputMediaBuffer->SetCurrentLength(lenOut);
     }
-
-	m_avFrame = av_frame_alloc();
-    if (!m_avFrame) {
-        goto clear;
-    }
-
-	/*m_avPkt->data = m_pSample->
-	m_avPkt->size = */
-
-	clear:
-	{
-		avcodec_free_context(&m_avContext);
-		av_packet_free(&m_avPkt);
-	}
 
 	return hr;
-
 }
 
 
@@ -927,6 +986,7 @@ HRESULT FFmpegMFT::GetSupportedInputMediaType(
 		//TODO: fix dynamic , now it's hard coded
         if(dwTypeIndex == 0) //HEVC
         {
+			//hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264);
            hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H265); //MFVideoFormat_HEVC
 		}
         else 
@@ -989,42 +1049,35 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
         }
         BREAK_ON_FAIL(hr);
 
+		//Find width and height from the imput type
+		UINT32 width, height;
+		hr = MFGetAttributeSize(m_pInputType, MF_MT_FRAME_SIZE, &width, &height);
+		BREAK_ON_FAIL(hr);
+		//Find fps from the imput type
+		UINT32 framerate_n, framerate_d;
+		hr = MFGetAttributeRatio(m_pInputType, MF_MT_FRAME_RATE, &framerate_n, &framerate_d);
+		BREAK_ON_FAIL(hr);
+
 		hr = pmt->SetUINT32(MF_MT_FIXED_SIZE_SAMPLES, TRUE);
 		BREAK_ON_FAIL(hr);
+
 		hr = pmt->SetUINT32(MF_MT_ALL_SAMPLES_INDEPENDENT, TRUE);
 		BREAK_ON_FAIL(hr);
+
+		hr = pmt->SetUINT32(MF_MT_SAMPLE_SIZE, width * height * 4); 
+		BREAK_ON_FAIL(hr);	
+
+		hr = MFSetAttributeSize(pmt, MF_MT_FRAME_SIZE, width, height);
+		BREAK_ON_FAIL(hr);
+
+		hr = MFSetAttributeRatio(pmt, MF_MT_FRAME_RATE, framerate_n, framerate_d);
+		BREAK_ON_FAIL(hr);
+
 		hr = pmt->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
 		BREAK_ON_FAIL(hr);
 
-		//depend on the input
-		if(m_pInputType != NULL)
-		{
-			UINT32 width, height;
-			hr = MFGetAttributeSize(m_pInputType, MF_MT_FRAME_SIZE, &width, &height);
-			BREAK_ON_FAIL(hr);
-			hr = MFSetAttributeSize(pmt, MF_MT_FRAME_SIZE, width, height);
-			BREAK_ON_FAIL(hr);
-			hr = pmt->SetUINT32(MF_MT_DEFAULT_STRIDE, width);
-			BREAK_ON_FAIL(hr);
-			UINT32 framerate_n, framerate_d;
-			hr = MFGetAttributeRatio(m_pInputType, MF_MT_FRAME_RATE, &framerate_n, &framerate_d);
-			BREAK_ON_FAIL(hr);
-			hr = MFSetAttributeRatio(pmt, MF_MT_FRAME_RATE, framerate_n, framerate_d);
-			BREAK_ON_FAIL(hr);
-		}
-
-		MFRatio pixelAspectRatio {1, 1};
-		hr = MFSetAttributeRatio(pmt, MF_MT_PIXEL_ASPECT_RATIO, pixelAspectRatio.Numerator, pixelAspectRatio.Denominator);
+		hr = MFSetAttributeRatio(pmt, MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
 		BREAK_ON_FAIL(hr);
-		hr = pmt->SetUINT32(MF_MT_ORIGINAL_4CC, 1129727304);
-		BREAK_ON_FAIL(hr);
-		hr = pmt->SetUINT32(MF_MT_SAMPLE_SIZE, 3110400);
-		BREAK_ON_FAIL(hr);		
-		hr = pmt->SetUINT32(MF_MT_VIDEO_NOMINAL_RANGE, 2);
-		BREAK_ON_FAIL(hr);
-		hr = pmt->SetUINT32(MF_MT_VIDEO_ROTATION, MFVideoRotationFormat_0);
-		BREAK_ON_FAIL(hr);
-
 
         // detach the underlying IUnknown pointer from the pmt CComPtr without
         // releasing the pointer so that we can return that object to the caller.
@@ -1053,6 +1106,7 @@ HRESULT FFmpegMFT::CheckOutputMediaType(IMFMediaType* pmt)
     do
     {
         BREAK_ON_NULL(pType, E_POINTER);
+		BREAK_ON_NULL(m_pInputType, MF_E_TRANSFORM_TYPE_NOT_SET); // Input type must be set first.
 
         // Extract the major type to make sure that the major type is video
         hr = pType->GetGUID(MF_MT_MAJOR_TYPE, &majorType);
@@ -1138,7 +1192,8 @@ HRESULT FFmpegMFT::CheckInputMediaType(IMFMediaType* pmt)
             break;
         }
 
-        // get the requested interlacing format
+		//TODO: not work currently with h.264
+         //get the requested interlacing format
         hr = pType->GetUINT32(MF_MT_INTERLACE_MODE, (UINT32*)&interlacingMode);
         BREAK_ON_FAIL(hr);
 

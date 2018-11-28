@@ -3,11 +3,8 @@
 #include "mftransform.h"
 #include "atlcore.h"
 #include "atlcomcli.h"
+#include "Decoder.h"
 
-extern "C"
-{
-	#include <libavcodec/avcodec.h>
-}
 
 using namespace ATL;
 
@@ -80,15 +77,8 @@ class FFmpegMFT :  public IMFTransform
 		HRESULT CheckInputMediaType(IMFMediaType *pmt);
 		HRESULT CheckOutputMediaType(IMFMediaType *pmt);
 
-		/*FFmpeg related members*/
-
-	    AVCodec *m_avCodec;
-	    AVCodecParserContext *m_avParser;
-	    AVCodecContext *m_avContext;
-	    AVFrame *m_avFrame;
-	    AVPacket *m_avPkt;
-
 
 		HRESULT decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOutputMediaBuffer);
+		Decoder m_decoder;
 };
 
