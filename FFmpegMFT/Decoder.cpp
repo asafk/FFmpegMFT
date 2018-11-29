@@ -64,7 +64,7 @@ bool Decoder::init(string codecName)
 
 bool Decoder::release()
 {
-	bool bRet = true;
+	flush();
 
 	if(m_avContext != NULL) {
 		avcodec_free_context(&m_avContext);
@@ -81,8 +81,27 @@ bool Decoder::release()
 		m_avPkt = NULL;
 	}
 
+	return true;
+}
 
-	return bRet;
+void Decoder::flush()
+{
+	do
+	{
+		int ret = avcodec_send_packet(m_avContext, NULL);
+		if (ret < 0) {
+			break;
+		}
+
+		ret = avcodec_receive_frame(m_avContext, m_avFrame);
+		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+			break;
+		}
+		else if (ret < 0) {
+			break;
+		}
+
+	} while (false);
 }
 
 bool Decoder::decode(unsigned char* in, int in_size, unsigned char*& out, int* out_size)

@@ -718,8 +718,11 @@ HRESULT FFmpegMFT::ProcessMessage(
     if(eMessage == MFT_MESSAGE_COMMAND_FLUSH)
     {
         // Flush the MFT - release all samples in it and reset the state
-        m_pSample = NULL;
-		
+		if(m_pSample != NULL)
+		{
+			m_decoder.flush();
+		}
+        m_pSample = NULL;    	
     }
     else if(eMessage ==  MFT_MESSAGE_COMMAND_DRAIN)
     {
@@ -736,7 +739,7 @@ HRESULT FFmpegMFT::ProcessMessage(
 	}
     else if(eMessage == MFT_MESSAGE_NOTIFY_BEGIN_STREAMING)
     {
-		  do
+		do
 	    {
 		    // Extract the subtype to make sure that the subtype is one that we support
 		    GUID subtype;

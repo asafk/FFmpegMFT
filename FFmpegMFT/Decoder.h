@@ -18,9 +18,10 @@ public:
 	~Decoder();
 
 	bool init(string codecName);
-	bool release();
+	bool release();	
 
 	bool decode(unsigned char* in, int in_size, unsigned char*& out, int* out_size);
+	void flush();
 
 private:
 	/*FFmpeg related members*/
@@ -28,6 +29,8 @@ private:
 	AVCodecContext *m_avContext;
 	AVFrame *m_avFrame;
 	AVPacket *m_avPkt;
+
+	
 
 	//helper function
 	//void pgm_save(unsigned char *buf, int wrap, int xsize, int ysize, char *filename)
