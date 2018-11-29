@@ -340,9 +340,7 @@ HRESULT FFmpegMFT::GetInputAvailableType(
     IMFMediaType    **ppType)
 {
 
-	//todo: check this 
-	 return MF_E_NO_MORE_TYPES;
-	OutputDebugString(_T("\n\nGetInputAvailableType\n\n"));
+	//OutputDebugString(_T("\n\nGetInputAvailableType\n\n"));
 
     HRESULT hr = S_OK;
     CComPtr<IMFMediaType> pmt;
@@ -866,7 +864,6 @@ HRESULT FFmpegMFT::ProcessOutput(
 		//input to buffer
 		CComPtr<IMFMediaBuffer> pInputMediaBuffer;
 		hr = m_pSample->ConvertToContiguousBuffer(&pInputMediaBuffer);
-		// = m_pSample->GetBufferByIndex(0, &pInputMediaBuffer);
 		BREAK_ON_FAIL(hr);
 
 		//output buffer
@@ -885,38 +882,65 @@ HRESULT FFmpegMFT::ProcessOutput(
 		BREAK_ON_FAIL(hr);
 		hr = outputSample->SetSampleTime(sampleTime);
 		BREAK_ON_FAIL(hr);
-
-		//set duration
-		/*LONGLONG sampleDuration;
-		hr = m_pSample->GetSampleDuration(&sampleDuration);
-		BREAK_ON_FAIL(hr);
-		hr = outputSample->SetSampleDuration(sampleDuration);
-		BREAK_ON_FAIL(hr);
-
-		hr = outputSample->SetUINT32(MFSampleExtension_CleanPoint, 1);
-		BREAK_ON_FAIL(hr);
-		*/
-		//pInputMediaBuffer.Release();
+		
 		m_pSample.Release();
 
         //// Detach the output sample from the MFT and put the pointer for
         //// the processed sample into the output buffer
         //pOutputSampleBuffer[0].pSample = m_pSample.Detach();
 
-        //// Set status flags for output
-        //pOutputSampleBuffer[0].dwStatus = 0;
-        //*pdwStatus = 0;
+        // Set status flags for output
+        pOutputSampleBuffer[0].dwStatus = 0;
+        *pdwStatus = 0;
     }
     while(false);
 
     return hr;
 }
 
+//HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOutputMediaBuffer)
+//{
+//	HRESULT hr = S_OK;
+//
+//	CBufferLock videoBuffer(pOutputMediaBuffer);
+//
+//	BYTE *pIn = NULL;
+//	DWORD lenIn = 0;
+//
+//	BYTE *pOut = NULL;
+//	int lenOut = 0;
+//    LONG lDefaultStride = 0;
+//    LONG lActualStride = 0;
+//
+//	 hr = GetDefaultStride(m_pOutputType, &lDefaultStride);
+//
+//    if (SUCCEEDED(hr))
+//    {
+//        hr = videoBuffer.LockBuffer(lDefaultStride, 1080/*TODO hard coded*/, &pOut, &lActualStride);
+//    }
+//
+//	if (SUCCEEDED(hr))
+//    {
+//        hr = inputMediaBuffer->Lock(&pIn, NULL, &lenIn);
+//    }
+//
+//	m_decoder.decode(pIn,lenIn,pOut,&lenOut);
+//
+//	inputMediaBuffer->Unlock();
+//
+//
+//	 if (SUCCEEDED(hr))
+//    {
+//        hr = pOutputMediaBuffer->SetCurrentLength(lenOut);
+//    }
+//
+//	return hr;
+//}
+
 HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOutputMediaBuffer)
 {
 	HRESULT hr = S_OK;
 
-	CBufferLock videoBuffer(pOutputMediaBuffer);
 
 	BYTE *pIn = NULL;
 	DWORD lenIn = 0;
@@ -924,13 +948,10 @@ HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOut
 	BYTE *pOut = NULL;
 	int lenOut = 0;
     LONG lDefaultStride = 0;
-    LONG lActualStride = 0;
-
-	 hr = GetDefaultStride(m_pOutputType, &lDefaultStride);
 
     if (SUCCEEDED(hr))
     {
-        hr = videoBuffer.LockBuffer(lDefaultStride, 1080/*TODO hard coded*/, &pOut, &lActualStride);
+		hr = pOutputMediaBuffer->Lock(&pOut,NULL,NULL);
     }
 
 	if (SUCCEEDED(hr))
@@ -941,7 +962,7 @@ HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOut
 	m_decoder.decode(pIn,lenIn,pOut,&lenOut);
 
 	inputMediaBuffer->Unlock();
-
+	pOutputMediaBuffer->Unlock();
 
 	 if (SUCCEEDED(hr))
     {
@@ -951,6 +972,48 @@ HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOut
 	return hr;
 }
 
+//HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOutputMediaBuffer)
+//{
+//	HRESULT hr = S_OK;
+//
+//
+//	BYTE *pIn = NULL;
+//	DWORD lenIn = 0;
+//
+//	BYTE *pOut = NULL;
+//	int lenOut = 0;
+//    LONG lDefaultStride = 0;
+//    LONG lActualStride = 0;
+//
+//	CComPtr<IMF2DBuffer> p2DBuffer;
+//	BYTE* pOutputBuffer = NULL;
+//				LONG yPitch;
+//	hr = pOutputMediaBuffer->QueryInterface(IID_IMF2DBuffer, reinterpret_cast<void**>(&p2DBuffer));
+//    if (SUCCEEDED(hr))
+//    {
+//    	hr = p2DBuffer->Lock2D(&pOutputBuffer, &yPitch);				
+//    }
+//
+//	if (SUCCEEDED(hr))
+//    {
+//        hr = inputMediaBuffer->Lock(&pIn, NULL, &lenIn);
+//    }
+//
+//	m_decoder.decode(pIn,lenIn,pOut,&lenOut);
+//	
+//	memcpy(pOutputBuffer,pOut,lenOut);
+//
+//	inputMediaBuffer->Unlock();
+//	p2DBuffer->Unlock2D();
+//
+//
+//	 if (SUCCEEDED(hr))
+//    {
+//        hr = pOutputMediaBuffer->SetCurrentLength(lenOut);
+//    }
+//
+//	return hr;
+//}
 
 //
 // Construct and return a partial media type with the specified index from the list of media
@@ -1039,7 +1102,7 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
         } */
 		if(dwTypeIndex == 0)
         {
-            hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_NV12);
+            hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_YV12);
         }
         else 
         { 
@@ -1054,30 +1117,30 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
 		hr = MFGetAttributeSize(m_pInputType, MF_MT_FRAME_SIZE, &width, &height);
 		BREAK_ON_FAIL(hr);
 		//Find fps from the imput type
-		UINT32 framerate_n, framerate_d;
+		/*UINT32 framerate_n, framerate_d;
 		hr = MFGetAttributeRatio(m_pInputType, MF_MT_FRAME_RATE, &framerate_n, &framerate_d);
-		BREAK_ON_FAIL(hr);
+		BREAK_ON_FAIL(hr);*/
 
-		hr = pmt->SetUINT32(MF_MT_FIXED_SIZE_SAMPLES, TRUE);
-		BREAK_ON_FAIL(hr);
+		/*hr = pmt->SetUINT32(MF_MT_FIXED_SIZE_SAMPLES, TRUE);
+		BREAK_ON_FAIL(hr);*/
 
 		hr = pmt->SetUINT32(MF_MT_ALL_SAMPLES_INDEPENDENT, TRUE);
 		BREAK_ON_FAIL(hr);
 
-		hr = pmt->SetUINT32(MF_MT_SAMPLE_SIZE, width * height * 4); 
-		BREAK_ON_FAIL(hr);	
+		/*hr = pmt->SetUINT32(MF_MT_SAMPLE_SIZE, width * height * 4); 
+		BREAK_ON_FAIL(hr);*/	
 
 		hr = MFSetAttributeSize(pmt, MF_MT_FRAME_SIZE, width, height);
 		BREAK_ON_FAIL(hr);
 
-		hr = MFSetAttributeRatio(pmt, MF_MT_FRAME_RATE, framerate_n, framerate_d);
-		BREAK_ON_FAIL(hr);
+		/*hr = MFSetAttributeRatio(pmt, MF_MT_FRAME_RATE, framerate_n, framerate_d);
+		BREAK_ON_FAIL(hr);*/
 
 		hr = pmt->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
 		BREAK_ON_FAIL(hr);
 
-		hr = MFSetAttributeRatio(pmt, MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
-		BREAK_ON_FAIL(hr);
+		/*hr = MFSetAttributeRatio(pmt, MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
+		BREAK_ON_FAIL(hr);*/
 
         // detach the underlying IUnknown pointer from the pmt CComPtr without
         // releasing the pointer so that we can return that object to the caller.
@@ -1125,7 +1188,7 @@ HRESULT FFmpegMFT::CheckOutputMediaType(IMFMediaType* pmt)
 
         // verify that the specified media type has one of the acceptable subtypes -
         // this filter will accept only NV12 and UYVY uncompressed subtypes.
-        if(subtype != MEDIASUBTYPE_NV12 && subtype != MEDIASUBTYPE_UYVY)
+        if(subtype != MEDIASUBTYPE_NV12 && subtype != MEDIASUBTYPE_UYVY && subtype != MEDIASUBTYPE_YV12)
         {
             hr = MF_E_INVALIDMEDIATYPE;
             break;

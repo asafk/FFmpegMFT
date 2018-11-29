@@ -1,13 +1,12 @@
 #pragma once
 
-template <typename T>
-inline void SafeRelease(T*& p)
+template <class T> void SafeRelease(T **ppT)
 {
-	if (p)
-	{
-		p->Release();
-		p = NULL;
-	}
+    if (*ppT)
+    {
+        (*ppT)->Release();
+        *ppT = NULL;
+    }
 }
 
 HRESULT GetDefaultStride(IMFMediaType *pType, LONG *plStride)
@@ -81,8 +80,8 @@ public:
     ~CBufferLock()
     {
         UnlockBuffer();
-        SafeRelease(m_pBuffer);
-        SafeRelease(m_p2DBuffer);
+        SafeRelease(&m_pBuffer);
+        SafeRelease(&m_p2DBuffer);
     }
 
     HRESULT LockBuffer(
