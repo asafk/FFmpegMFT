@@ -914,11 +914,17 @@ HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOut
     LONG lDefaultStride = 0;
     LONG lActualStride = 0;
 
-	 hr = GetDefaultStride(m_pOutputType, &lDefaultStride);
+	hr = GetDefaultStride(m_pOutputType, &lDefaultStride);
+
+	UINT32 width, height;
+	if (SUCCEEDED(hr))
+    {		
+		hr = MFGetAttributeSize(m_pOutputType, MF_MT_FRAME_SIZE, &width, &height);
+    }
 
     if (SUCCEEDED(hr))
     {
-        hr = videoBuffer.LockBuffer(lDefaultStride, 1080/*TODO hard coded*/, &pOut, &lActualStride);
+        hr = videoBuffer.LockBuffer(lDefaultStride, height, &pOut, &lActualStride);
     }
 
 	if (SUCCEEDED(hr))
@@ -954,22 +960,14 @@ HRESULT FFmpegMFT::GetSupportedInputMediaType(
         hr = pmt->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
         BREAK_ON_FAIL(hr);
 
-
-  //      if(dwTypeIndex == 0) //H.264
-  //      {
-  //          hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264);
-  //      }
-		//else if(dwTypeIndex == 1) //HEVC
-  //      {
-  //          hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H265); //MFVideoFormat_HEVC
-  //      }
-
-		//TODO: fix dynamic , now it's hard coded
-        if(dwTypeIndex == 0) //HEVC
+        if(dwTypeIndex == 0) //H.264
         {
-			//hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264);
-           hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H265); //MFVideoFormat_HEVC
-		}
+            hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264);
+        }
+		else if(dwTypeIndex == 1) //HEVC
+        {
+            hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H265); //MFVideoFormat_HEVC
+        }
         else 
         { 
             // if we don't have any more media types, return an error signifying
@@ -1168,19 +1166,6 @@ HRESULT FFmpegMFT::CheckInputMediaType(IMFMediaType* pmt)
         if(InlineIsEqualGUID(subtype, MFVideoFormat_H264) != TRUE && 
 			InlineIsEqualGUID(subtype,MFVideoFormat_H265) != TRUE &&
 			InlineIsEqualGUID(subtype,MFVideoFormat_HEVC) != TRUE )
-        {
-            hr = MF_E_INVALIDMEDIATYPE;
-            break;
-        }
-
-		//TODO: not work currently with h.264
-         //get the requested interlacing format
-        hr = pType->GetUINT32(MF_MT_INTERLACE_MODE, (UINT32*)&interlacingMode);
-        BREAK_ON_FAIL(hr);
-
-        // since we want to deal only with progressive (non-interlaced) frames, make sure
-        // we fail if we get anything but progressive
-        if (interlacingMode != MFVideoInterlace_Progressive)
         {
             hr = MF_E_INVALIDMEDIATYPE;
             break;
