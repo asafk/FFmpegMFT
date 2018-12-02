@@ -901,60 +901,24 @@ HRESULT FFmpegMFT::ProcessOutput(
     return hr;
 }
 
-//HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOutputMediaBuffer)
-//{
-//	HRESULT hr = S_OK;
-//
-//	CBufferLock videoBuffer(pOutputMediaBuffer);
-//
-//	BYTE *pIn = NULL;
-//	DWORD lenIn = 0;
-//
-//	BYTE *pOut = NULL;
-//	int lenOut = 0;
-//    LONG lDefaultStride = 0;
-//    LONG lActualStride = 0;
-//
-//	 hr = GetDefaultStride(m_pOutputType, &lDefaultStride);
-//
-//    if (SUCCEEDED(hr))
-//    {
-//        hr = videoBuffer.LockBuffer(lDefaultStride, 1080/*TODO hard coded*/, &pOut, &lActualStride);
-//    }
-//
-//	if (SUCCEEDED(hr))
-//    {
-//        hr = inputMediaBuffer->Lock(&pIn, NULL, &lenIn);
-//    }
-//
-//	m_decoder.decode(pIn,lenIn,pOut,&lenOut);
-//
-//	inputMediaBuffer->Unlock();
-//
-//
-//	 if (SUCCEEDED(hr))
-//    {
-//        hr = pOutputMediaBuffer->SetCurrentLength(lenOut);
-//    }
-//
-//	return hr;
-//}
-
 HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOutputMediaBuffer)
 {
 	HRESULT hr = S_OK;
 
+	CBufferLock videoBuffer(pOutputMediaBuffer);
 
 	BYTE *pIn = NULL;
 	DWORD lenIn = 0;
 
 	BYTE *pOut = NULL;
-	int lenOut = 0;
     LONG lDefaultStride = 0;
+    LONG lActualStride = 0;
+
+	 hr = GetDefaultStride(m_pOutputType, &lDefaultStride);
 
     if (SUCCEEDED(hr))
     {
-		hr = pOutputMediaBuffer->Lock(&pOut,NULL,NULL);
+        hr = videoBuffer.LockBuffer(lDefaultStride, 1080/*TODO hard coded*/, &pOut, &lActualStride);
     }
 
 	if (SUCCEEDED(hr))
@@ -962,61 +926,12 @@ HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOut
         hr = inputMediaBuffer->Lock(&pIn, NULL, &lenIn);
     }
 
-	m_decoder.decode(pIn,lenIn,pOut,&lenOut);
+	m_decoder.decodeToBuffer(pIn,lenIn,pOut,lActualStride);
 
 	inputMediaBuffer->Unlock();
-	pOutputMediaBuffer->Unlock();
-
-	 if (SUCCEEDED(hr))
-    {
-        hr = pOutputMediaBuffer->SetCurrentLength(lenOut);
-    }
 
 	return hr;
 }
-
-//HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOutputMediaBuffer)
-//{
-//	HRESULT hr = S_OK;
-//
-//
-//	BYTE *pIn = NULL;
-//	DWORD lenIn = 0;
-//
-//	BYTE *pOut = NULL;
-//	int lenOut = 0;
-//    LONG lDefaultStride = 0;
-//    LONG lActualStride = 0;
-//
-//	CComPtr<IMF2DBuffer> p2DBuffer;
-//	BYTE* pOutputBuffer = NULL;
-//				LONG yPitch;
-//	hr = pOutputMediaBuffer->QueryInterface(IID_IMF2DBuffer, reinterpret_cast<void**>(&p2DBuffer));
-//    if (SUCCEEDED(hr))
-//    {
-//    	hr = p2DBuffer->Lock2D(&pOutputBuffer, &yPitch);				
-//    }
-//
-//	if (SUCCEEDED(hr))
-//    {
-//        hr = inputMediaBuffer->Lock(&pIn, NULL, &lenIn);
-//    }
-//
-//	m_decoder.decode(pIn,lenIn,pOut,&lenOut);
-//	
-//	memcpy(pOutputBuffer,pOut,lenOut);
-//
-//	inputMediaBuffer->Unlock();
-//	p2DBuffer->Unlock2D();
-//
-//
-//	 if (SUCCEEDED(hr))
-//    {
-//        hr = pOutputMediaBuffer->SetCurrentLength(lenOut);
-//    }
-//
-//	return hr;
-//}
 
 //
 // Construct and return a partial media type with the specified index from the list of media
@@ -1095,14 +1010,14 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
 
         // set the subtype of the video type by index.  The indexes of the media types
         // that are supported by this filter are:  0 - UYVY, 1 - NV12
-   /*     if(dwTypeIndex == 0)
+      /* if(dwTypeIndex == 0)
         {
             hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_UYVY);
-        }
-        else if(dwTypeIndex == 1)
-        {
-            hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_NV12);
-        } */
+        }*/
+    ///*    else*/ if(dwTypeIndex == 0)
+    //    {
+    //        hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_NV12);
+    //    } 
 		if(dwTypeIndex == 0)
         {
             hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_YV12);

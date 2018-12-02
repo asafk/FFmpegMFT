@@ -104,7 +104,7 @@ void Decoder::flush()
 	} while (false);
 }
 
-bool Decoder::decode(unsigned char* in, int in_size, unsigned char*& out, int* out_size)
+bool Decoder::decode(unsigned char* in, int in_size, unsigned char*& out, int pitch)
 {
 	bool bRet = true;
 	int ret;
@@ -135,11 +135,27 @@ bool Decoder::decode(unsigned char* in, int in_size, unsigned char*& out, int* o
 
 	if(bRet == true)
 	{
-		//out = m_avFrame->data[0];
-		if(out_size != NULL)
-			*out_size = av_image_get_buffer_size(m_avContext->pix_fmt, m_avContext->width,m_avContext->height,1);
+		DWORD height = m_avFrame->height;
+		DWORD yStride = m_avFrame->width;
+		DWORD uvStride =  m_avFrame->width / 2;
+		BYTE* pY = m_avFrame->data[0];
+		BYTE* pV = m_avFrame->data[2];
+		BYTE* pU = m_avFrame->data[1];
+		DWORD uvHeight = height / 2;
+		LONG uvPitch = pitch / 2;
 
-		av_image_copy_to_buffer(out,*out_size,m_avFrame->data,m_avFrame->linesize,m_avContext->pix_fmt,m_avFrame->width,m_avFrame->height,1);
+		for (DWORD row = 0; row < height; row++)
+			memcpy(out + row * pitch, &pY[row * yStride], yStride);
+
+		BYTE* pVBuffer = out + height * pitch;
+
+		for (DWORD row = 0; row < uvHeight; row++)
+			memcpy(pVBuffer + row * uvPitch, &pV[row * uvStride], uvStride);
+
+		BYTE* pUBuffer = pVBuffer + height * pitch / 4;
+
+		for (DWORD row = 0; row < uvHeight; row++)
+			memcpy(pUBuffer + row * uvPitch, &pU[row * uvStride], uvStride);
 	}
 
 	return bRet;
