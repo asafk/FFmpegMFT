@@ -926,7 +926,7 @@ HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOut
         hr = inputMediaBuffer->Lock(&pIn, NULL, &lenIn);
     }
 
-	m_decoder.decodeToBuffer(pIn,lenIn,pOut,lActualStride);
+	m_decoder.decode(pIn,lenIn,pOut,lActualStride);
 
 	inputMediaBuffer->Unlock();
 
