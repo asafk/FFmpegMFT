@@ -7,3 +7,5 @@
 /.vs/FFmpegMFT/v15
 /FFmpegMFT/Debug
 /FFmpegMFT/Release
+/ffmpeg/build32
+/ffmpeg
