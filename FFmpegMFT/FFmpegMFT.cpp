@@ -718,10 +718,7 @@ HRESULT FFmpegMFT::ProcessMessage(
     if(eMessage == MFT_MESSAGE_COMMAND_FLUSH)
     {
         // Flush the MFT - release all samples in it and reset the state
-		if(m_pSample != NULL)
-		{
-			m_decoder.flush();
-		}
+		m_decoder.flush();
         m_pSample = NULL;    	
     }
     else if(eMessage ==  MFT_MESSAGE_COMMAND_DRAIN)
@@ -932,10 +929,11 @@ HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOut
         hr = inputMediaBuffer->Lock(&pIn, NULL, &lenIn);
     }
 
-	m_decoder.decode(pIn,lenIn,pOut,lActualStride);
+	bool bret = m_decoder.decode(pIn,lenIn,pOut,lActualStride);
 
-	inputMediaBuffer->Unlock();
+	hr = inputMediaBuffer->Unlock();
 
+	//return bret ? hr : MF_E_UNEXPECTED;
 	return hr;
 }
 
@@ -1012,10 +1010,11 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
         {
             hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_UYVY);
         }*/
-    ///*    else*/ if(dwTypeIndex == 0)
-    //    {
-    //        hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_NV12);
-    //    } 
+    ///*    else*/
+    /*	if(dwTypeIndex == 0)
+        {
+            hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_NV12);
+        } */
 		if(dwTypeIndex == 0)
         {
             hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_YV12);
