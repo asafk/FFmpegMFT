@@ -8,7 +8,7 @@ Decoder::Decoder():	m_avCodec(NULL),
 	m_avPkt(NULL)/*,
 	m_pData(NULL)*/
 {
-	avcodec_register_all();
+	//avcodec_register_all();
 }
 
 Decoder::~Decoder()
@@ -151,7 +151,7 @@ bool Decoder::decode(unsigned char* in, int in_size, unsigned char*& out, int pi
 	m_pData = out;
 	m_avContext->opaque = this;
 	m_avContext->get_buffer2 = my_get_buffer;*/
-	m_avContext->get_format = get_format;
+	//m_avContext->get_format = get_format;
 	
 
 	do
@@ -180,7 +180,7 @@ bool Decoder::decode(unsigned char* in, int in_size, unsigned char*& out, int pi
 
 	if(bRet == true)
 	{
-		if(m_avFrame->format == AV_PIX_FMT_YUV420P){
+		if(m_avFrame->format == AV_PIX_FMT_YUV420P || m_avFrame->format == AV_PIX_FMT_YUVJ420P){
 		DWORD height = m_avFrame->height;
 		DWORD yStride = m_avFrame->width;
 		DWORD uvStride =  m_avFrame->width / 2;
