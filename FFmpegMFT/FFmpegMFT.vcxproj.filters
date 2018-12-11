@@ -27,10 +27,19 @@
     <ClInclude Include="MFTClassFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CBufferLock.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cpu_decoder_impl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hw_decoder_impl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="Decoder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CBufferLock.h">
+    <ClInclude Include="IDecoderStrategy.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -47,13 +56,19 @@
     <ClCompile Include="MFTClassFactory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="cpu_decoder_impl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hw_decoder_impl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Decoder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="FFmpegMFT.def">
-      <Filter>Source Files</Filter>
+      <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>
 </Project>
