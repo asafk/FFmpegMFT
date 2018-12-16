@@ -1,14 +1,20 @@
 #include "stdafx.h"
 #include "FFmpegMFT.h"
 
-#include <MMSystem.h>
+#include <evr.h>
+#include <d3d9.h>
+#include <dxva2api.h>
 #include <uuids.h>
+
+
 #include "CBufferLock.h"
 
 
 FFmpegMFT::FFmpegMFT(void) :
-    m_cRef(1)
-
+    m_cRef(1),
+	m_h3dDevice(NULL),
+	m_pConfigs(NULL),
+	m_pRenderTargetFormats(NULL)
 {
 	OutputDebugString(_T("\n\nFFmpegMFT\n\n"));
 }
@@ -233,13 +239,21 @@ HRESULT FFmpegMFT::GetOutputStreamInfo(
         //     contains a whole uncompressed frame.
         //   - The samples returned will have only a single buffer.
 
-        //   - The MFT provides samples and there is no need to give it output samples to 
+        //   - only on HW - The MFT provides samples and there is no need to give it output samples to 
         //     fill in during its ProcessOutput() calls.
-        pStreamInfo->dwFlags =
-            MFT_OUTPUT_STREAM_WHOLE_SAMPLES |                
-            MFT_OUTPUT_STREAM_SINGLE_SAMPLE_PER_BUFFER |
-			MFT_OUTPUT_STREAM_FIXED_SAMPLE_SIZE;
-           /* MFT_OUTPUT_STREAM_PROVIDES_SAMPLES ;*/
+		if(m_p3DDeviceManager == NULL){
+	        pStreamInfo->dwFlags =
+	            MFT_OUTPUT_STREAM_WHOLE_SAMPLES |                
+	            MFT_OUTPUT_STREAM_SINGLE_SAMPLE_PER_BUFFER |
+				MFT_OUTPUT_STREAM_FIXED_SAMPLE_SIZE;
+		}
+		else{
+			pStreamInfo->dwFlags =
+	            MFT_OUTPUT_STREAM_WHOLE_SAMPLES |                
+	            MFT_OUTPUT_STREAM_SINGLE_SAMPLE_PER_BUFFER |
+				MFT_OUTPUT_STREAM_FIXED_SAMPLE_SIZE |
+	            MFT_OUTPUT_STREAM_PROVIDES_SAMPLES ;
+		}
 
         // the cbAlignment variable contains information about byte alignment of the sample 
         // buffers, if one is needed.  Zero indicates that no specific alignment is needed.
@@ -255,19 +269,36 @@ HRESULT FFmpegMFT::GetOutputStreamInfo(
 }
 
 
-
-
-//
-// Get the bag of custom attributes associated with this MFT.  If the MFT does not support
-// any custom attributes, the method can be left unimplemented.  If an object is returned,
-// the object can be used to either get or set attributes of this MFT, and thus provide custom
-// parameters and information about the MFT.
-//
 HRESULT FFmpegMFT::GetAttributes(IMFAttributes** pAttributes)
 {
 	OutputDebugString(_T("\n\nGetAttributes\n\n"));
-    // This MFT does not support any attributes, so the method is not implemented.
-    return E_NOTIMPL;
+    
+	HRESULT hr = S_OK;
+    CComPtr<IMFAttributes> att;
+
+    do
+    {
+        CComCritSecLock<CComAutoCriticalSection> lock(m_critSec);
+
+        BREAK_ON_NULL(pAttributes, E_POINTER);
+		hr = MFCreateAttributes(&att, 0);
+		BREAK_ON_FAIL(hr);
+
+		hr = att->SetUINT32(MF_SA_D3D_AWARE, TRUE);
+		BREAK_ON_FAIL(hr);       
+
+        // return the resulting attribute
+        *pAttributes = att;
+        (*pAttributes)->AddRef();
+    }
+    while(false);
+
+    if(FAILED(hr) && pAttributes != NULL)
+    {
+        *pAttributes = NULL;
+    }
+
+    return hr;
 }
 
 
@@ -432,7 +463,7 @@ HRESULT FFmpegMFT::SetInputType(DWORD dwInputStreamID, IMFMediaType* pType,
 	OutputDebugString(_T("\n\nSetInputType\n\n"));
 
     HRESULT hr = S_OK;
-    CComPtr<IMFAttributes> pTypeAttributes = pType;
+    //CComPtr<IMFAttributes> pTypeAttributes = pType;
 
     do
     {
@@ -729,10 +760,49 @@ HRESULT FFmpegMFT::ProcessMessage(
     }
 	else if(eMessage == MFT_MESSAGE_SET_D3D_MANAGER)
 	{
-		// The pipeline should never send this message unless the MFT
-        // has the MF_SA_D3D_AWARE attribute set to TRUE. However, if we
-        // do get this message, it's invalid and we don't implement it.
-        hr = E_NOTIMPL;
+		do
+	    {
+			if(ulParam == NULL) //fallback to SW decoding
+			{
+				if(m_h3dDevice != NULL)
+				{
+					HRESULT hr = m_p3DDeviceManager->CloseDeviceHandle(m_h3dDevice);
+					if(FAILED(hr))
+					{
+						//log
+					}
+					m_h3dDevice = NULL;
+				}
+				m_pdxVideoDecoderService.Release();
+				m_pdxVideoDecoderService = NULL;
+				m_p3DDeviceManager.Release();
+				m_p3DDeviceManager = NULL;
+
+				m_decoder.setDecoderStrategy(new cpu_decoder_impl());
+			}
+			else //get the pointer to the Direct3D device manger
+			{
+				((IUnknown*)ulParam)->QueryInterface(IID_IDirect3DDeviceManager9, (void**)&m_p3DDeviceManager);
+				BREAK_ON_NULL(m_p3DDeviceManager, E_POINTER);
+			
+				hr = m_p3DDeviceManager->OpenDeviceHandle(&m_h3dDevice);
+				BREAK_ON_FAIL(hr);
+
+			    // Get the video processor service 
+			    hr = m_p3DDeviceManager->GetVideoService(m_h3dDevice, IID_PPV_ARGS(&m_pdxVideoDecoderService));
+				if(FAILED(hr) && hr == DXVA2_E_NEW_VIDEO_DEVICE)
+				{
+					hr = m_p3DDeviceManager->OpenDeviceHandle(&m_h3dDevice);
+					BREAK_ON_FAIL(hr);
+
+					// Get the video processor service 
+					hr = m_p3DDeviceManager->GetVideoService(m_h3dDevice, IID_PPV_ARGS(&m_pdxVideoDecoderService));
+				}
+
+				m_decoder.setDecoderStrategy(new hw_decoder_impl());
+			}
+	    }
+	    while (false);
 	}
     else if(eMessage == MFT_MESSAGE_NOTIFY_BEGIN_STREAMING)
     {
@@ -866,11 +936,56 @@ HRESULT FFmpegMFT::ProcessOutput(
 		hr = m_pSample->ConvertToContiguousBuffer(&pInputMediaBuffer);
 		BREAK_ON_FAIL(hr);
 
-		//output buffer
-		IMFSample* outputSample = pOutputSampleBuffer[0].pSample;
-		CComPtr<IMFMediaBuffer> pOutputMediaBuffer;
-		hr = outputSample->GetBufferByIndex(0, &pOutputMediaBuffer);
-		BREAK_ON_FAIL(hr);
+		//output sample/buffer
+		IMFSample* outputSample = NULL;
+		CComPtr<IMFMediaBuffer> pOutputMediaBuffer = NULL;
+
+		if(m_p3DDeviceManager == NULL){ //sw decoding , evr will provide the samples			
+			outputSample = pOutputSampleBuffer[0].pSample;			
+			hr = outputSample->GetBufferByIndex(0, &pOutputMediaBuffer);
+			BREAK_ON_FAIL(hr);
+		}else{
+			//hr = m_p3DDeviceManager->TestDevice(m_h3dDevice);
+			//if(hr == DXVA2_E_NEW_VIDEO_DEVICE)
+			//{
+			//	/* https://docs.microsoft.com/en-us/windows/desktop/medfound/supporting-dxva-2-0-in-media-foundation#decoding
+			//	1. Close the device handle by calling IDirect3DDeviceManager9::CloseDeviceHandle.
+			//	2. Release the IDirectXVideoDecoderService and IDirectXVideoDecoder pointers.
+			//	3. Open a new device handle.
+			//	4. Negotiate a new decoder configuration, as described in "Finding a Decoder Configuration" earlier on this page.
+			//	5. Create a new decoder device.
+			//	 */
+			//	BREAK_ON_FAIL(hr);
+			//}
+
+			CComPtr<IMFSample> outSample;
+
+			UINT32 uiWidthInPixels, uiHeightInPixels;
+			hr = MFGetAttributeSize(m_pOutputType, MF_MT_FRAME_SIZE, &uiWidthInPixels, &uiHeightInPixels);
+			BREAK_ON_FAIL(hr);
+			//now let's allocate uncompressed buffers for the outputs
+			LPDIRECT3DSURFACE9 surface;
+			hr = m_pdxVideoDecoderService->CreateSurface(
+				uiWidthInPixels,
+				uiHeightInPixels,
+				0,
+				static_cast<D3DFORMAT>(MAKEFOURCC('N', 'V', '1', '2')),
+				D3DPOOL_DEFAULT,
+				0,
+				DXVA2_VideoDecoderRenderTarget,
+				&surface,
+				NULL);
+
+			BREAK_ON_FAIL(hr);
+
+
+			hr = MFCreateVideoSampleFromSurface(surface, &outSample);
+			BREAK_ON_FAIL(hr);
+
+			outputSample = outSample;			
+			hr = outputSample->GetBufferByIndex(0, &pOutputMediaBuffer);
+			BREAK_ON_FAIL(hr);
+		}
 
 		///do the decoding
 		hr = decode(pInputMediaBuffer,pOutputMediaBuffer);
@@ -974,6 +1089,8 @@ HRESULT FFmpegMFT::GetSupportedInputMediaType(
         }
         BREAK_ON_FAIL(hr);
 
+		
+
         // detach the underlying IUnknown pointer from the pmt CComPtr without
         // releasing the pointer so that we can return that object to the caller.
         *ppMT = pmt.Detach();
@@ -1027,35 +1144,19 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
         }
         BREAK_ON_FAIL(hr);
 
-		//Find width and height from the imput type
+		//Find width and height from the input type
 		UINT32 width, height;
 		hr = MFGetAttributeSize(m_pInputType, MF_MT_FRAME_SIZE, &width, &height);
 		BREAK_ON_FAIL(hr);
-		//Find fps from the imput type
-		/*UINT32 framerate_n, framerate_d;
-		hr = MFGetAttributeRatio(m_pInputType, MF_MT_FRAME_RATE, &framerate_n, &framerate_d);
-		BREAK_ON_FAIL(hr);*/
-
-		/*hr = pmt->SetUINT32(MF_MT_FIXED_SIZE_SAMPLES, TRUE);
-		BREAK_ON_FAIL(hr);*/
 
 		hr = pmt->SetUINT32(MF_MT_ALL_SAMPLES_INDEPENDENT, TRUE);
 		BREAK_ON_FAIL(hr);
 
-		/*hr = pmt->SetUINT32(MF_MT_SAMPLE_SIZE, width * height * 4); 
-		BREAK_ON_FAIL(hr);*/	
-
 		hr = MFSetAttributeSize(pmt, MF_MT_FRAME_SIZE, width, height);
 		BREAK_ON_FAIL(hr);
 
-		/*hr = MFSetAttributeRatio(pmt, MF_MT_FRAME_RATE, framerate_n, framerate_d);
-		BREAK_ON_FAIL(hr);*/
-
 		hr = pmt->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
 		BREAK_ON_FAIL(hr);
-
-		/*hr = MFSetAttributeRatio(pmt, MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
-		BREAK_ON_FAIL(hr);*/
 
         // detach the underlying IUnknown pointer from the pmt CComPtr without
         // releasing the pointer so that we can return that object to the caller.
@@ -1169,6 +1270,134 @@ HRESULT FFmpegMFT::CheckInputMediaType(IMFMediaType* pmt)
             hr = MF_E_INVALIDMEDIATYPE;
             break;
         }
+
+		// get the requested interlacing format
+        hr = pType->GetUINT32(MF_MT_INTERLACE_MODE, (UINT32*)&interlacingMode);
+        BREAK_ON_FAIL(hr);
+
+		//Find fps from the input type
+		UINT32 framerate_n, framerate_d;
+		hr = MFGetAttributeRatio(pType, MF_MT_FRAME_RATE, &framerate_n, &framerate_d);
+		BREAK_ON_FAIL(hr);
+
+		//Find width and height from the input type
+		UINT32 uiWidthInPixels, uiHeightInPixels;
+		hr = MFGetAttributeSize(pType, MF_MT_FRAME_SIZE, &uiWidthInPixels, &uiHeightInPixels);
+		BREAK_ON_FAIL(hr);
+
+		//Supporting DXVA 2.0 - Finding a Decoder Configuration
+		if(m_pdxVideoDecoderService != NULL){
+			hr = MF_E_UNSUPPORTED_D3D_TYPE;
+		}
+
+		//Supporting DXVA 2.0 - Finding a Decoder Configuration
+		//if(m_pdxVideoDecoderService != NULL)
+		//{
+		//	bool bFindDecoderGuid = false;
+		//	GUID guid;
+		//	GUID* pGuids = NULL;
+		//	UINT uiCount = 0;
+		//	hr = m_pdxVideoDecoderService->GetDecoderDeviceGuids(&uiCount,&pGuids);
+		//	if(FAILED(hr)){
+		//		return MF_E_UNSUPPORTED_D3D_TYPE;
+		//	}
+
+		//	for(UINT ui = 0; ui < uiCount; ui++){
+		//		guid = pGuids[ui];
+		//		if(InlineIsEqualGUID(subtype, MFVideoFormat_H264) != TRUE ){
+		//			
+		//		}
+		//		
+		//		if(InlineIsEqualGUID(subtype,MFVideoFormat_H265) != TRUE ||
+		//			InlineIsEqualGUID(subtype,MFVideoFormat_HEVC) != TRUE){
+		//			if(InlineIsEqualGUID(guid,DXVA2_ModeHEVC_VLD_Main) || InlineIsEqualGUID(guid,DXVA2_ModeHEVC_VLD_Main10)){
+		//				bFindDecoderGuid = true;
+		//				break;
+		//			}
+		//		}
+		//	}			
+
+		//	if(bFindDecoderGuid){
+
+		//		if(m_pRenderTargetFormats){
+		//			CoTaskMemFree(m_pRenderTargetFormats);
+		//			m_pRenderTargetFormats = NULL;
+		//		}
+
+		//		hr = m_pdxVideoDecoderService->GetDecoderRenderTargets(guid, &uiCount, &m_pRenderTargetFormats);
+		//		if(FAILED(hr)){
+		//			CoTaskMemFree(pGuids);
+		//			return MF_E_UNSUPPORTED_D3D_TYPE;
+		//		}
+
+		//		if(m_pConfigs){
+		//			CoTaskMemFree(m_pConfigs);
+		//			m_pConfigs = NULL;
+		//		}
+
+		//		memset(&m_Dxva2Desc, 0, sizeof(DXVA2_VideoDesc));
+
+		//		DXVA2_Frequency Dxva2Freq;
+		//		Dxva2Freq.Numerator = framerate_n;
+		//		Dxva2Freq.Denominator = framerate_d;
+
+		//		m_Dxva2Desc.SampleWidth = uiWidthInPixels;
+		//		m_Dxva2Desc.SampleHeight = uiHeightInPixels;
+
+		//		m_Dxva2Desc.SampleFormat.SampleFormat = interlacingMode;
+
+		//		m_Dxva2Desc.Format = static_cast<D3DFORMAT>(MAKEFOURCC('N', 'V', '1', '2'));
+		//		m_Dxva2Desc.InputSampleFreq = Dxva2Freq;
+		//		m_Dxva2Desc.OutputFrameFreq = Dxva2Freq;
+
+		//		hr = m_pdxVideoDecoderService->GetDecoderConfigurations(guid, &m_Dxva2Desc, NULL, &uiCount, &m_pConfigs);
+		//		if(FAILED(hr)){
+		//			CoTaskMemFree(pGuids);
+		//			return MF_E_UNSUPPORTED_D3D_TYPE;
+		//		}
+		//	}
+
+		//	//now let's allocate uncompressed buffers for the outputs
+		//	LPDIRECT3DSURFACE9 surface_list[NUM_DIRECT3D_SURFACE];
+		//	hr = m_pdxVideoDecoderService->CreateSurface(
+		//		uiWidthInPixels,
+		//		uiHeightInPixels,
+		//		NUM_DIRECT3D_SURFACE - 1,
+		//		static_cast<D3DFORMAT>(MAKEFOURCC('N', 'V', '1', '2')),
+		//		D3DPOOL_DEFAULT,
+		//		0,
+		//		DXVA2_VideoDecoderRenderTarget,
+		//		surface_list,
+		//		NULL);
+
+		//	if(FAILED(hr)){
+		//		CoTaskMemFree(pGuids);
+		//		return MF_E_UNSUPPORTED_D3D_TYPE;
+		//	}
+
+		//	for(UINT ui = 0; ui < NUM_DIRECT3D_SURFACE; ui++){
+		//		hr = MFCreateVideoSampleFromSurface(surface_list[ui], &m_pSampleOut[ui]);
+		//	}
+
+		//	if(FAILED(hr)){
+		//		CoTaskMemFree(pGuids);
+		//		return MF_E_UNSUPPORTED_D3D_TYPE;
+		//	}
+
+		//	hr = m_pdxVideoDecoderService->CreateVideoDecoder(guid,
+		//		&m_Dxva2Desc,
+		//		&m_pConfigs[0],
+		//		surface_list,
+		//		NUM_DIRECT3D_SURFACE,
+		//		&m_pVideoDecoder);
+
+		//	if(FAILED(hr)){
+		//		CoTaskMemFree(pGuids);
+		//		return MF_E_UNSUPPORTED_D3D_TYPE;
+		//	}
+
+		//	CoTaskMemFree(pGuids);
+		//}
     }
     while(false);
 

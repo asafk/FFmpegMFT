@@ -4,7 +4,13 @@
 #include "atlcore.h"
 #include "atlcomcli.h"
 #include "Decoder.h"
+#include "cpu_decoder_impl.h"
+#include "hw_decoder_impl.h"
 
+#include <d3d9.h>
+#include <dxva2api.h>
+
+#define NUM_DIRECT3D_SURFACE 3
 
 using namespace ATL;
 
@@ -69,6 +75,17 @@ class FFmpegMFT :  public IMFTransform
 	    CComPtr<IMFSample>  m_pSample;           // Input sample.
 	    CComPtr<IMFMediaType> m_pInputType;      // Input media type.
 	    CComPtr<IMFMediaType> m_pOutputType;     // Output media type.
+
+		//DXVA  support
+		HANDLE m_h3dDevice;
+		CComPtr<IDirect3DDeviceManager9> m_p3DDeviceManager; //3d manager
+		CComPtr<IDirectXVideoDecoderService> m_pdxVideoDecoderService; //video DXVA service
+		CComPtr<IDirectXVideoDecoder> m_pVideoDecoder;
+		D3DFORMAT* m_pRenderTargetFormats;
+		DXVA2_VideoDesc m_Dxva2Desc;
+		DXVA2_ConfigPictureDecode* m_pConfigs;
+		CComPtr<IMFSample>  m_pSampleOut[3];
+
 
 
 		// private helper functions

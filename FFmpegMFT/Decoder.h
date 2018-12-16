@@ -8,7 +8,7 @@ public:
 	Decoder();
 	~Decoder();
 
-	bool setHWAccelPrefered();
+	bool setDecoderStrategy(IDecoderStrategy* strategy);
 
 	bool init(std::string codecName);
 	bool release();	

@@ -13,18 +13,11 @@ Decoder::~Decoder()
 	SAFE_DELETE(m_decoderS);
 }
 
-bool Decoder::setHWAccelPrefered()
+bool Decoder::setDecoderStrategy(IDecoderStrategy* strategy)
 {
-	bool bDoWeSupportHW = false; //TODO: check capability for hw acceleration
-	if(bDoWeSupportHW)
-	{
+	if(strategy != NULL){
 		SAFE_DELETE(m_decoderS);
-		m_decoderS = new hw_decoder_impl();
-	}
-	else
-	{
-		SAFE_DELETE(m_decoderS);
-		m_decoderS = new cpu_decoder_impl();
+		m_decoderS = strategy;
 	}
 
 	return m_decoderS != NULL ? true : false;
