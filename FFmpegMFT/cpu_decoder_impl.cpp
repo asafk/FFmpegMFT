@@ -136,7 +136,7 @@ enum AVPixelFormat cpu_decoder_impl::get_format(struct AVCodecContext *s, const 
 	return AV_PIX_FMT_YUV420P;
 }
 
-bool cpu_decoder_impl::decode(unsigned char* in, int in_size, unsigned char*& out, int pitch)
+bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pitch)
 {
 	bool bRet = true;
 	int ret;
@@ -185,9 +185,9 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, unsigned char*& ou
 		LONG uvPitch = pitch / 2;
 
 		for (DWORD row = 0; row < height; row++)
-			memcpy(out + row * pitch, &pY[row * yStride], yStride);
+			memcpy((BYTE*)out + row * pitch, &pY[row * yStride], yStride);
 
-		BYTE* pVBuffer = out + height * pitch;
+		BYTE* pVBuffer = (BYTE*)out + height * pitch;
 
 		for (DWORD row = 0; row < uvHeight; row++)
 			memcpy(pVBuffer + row * uvPitch, &pV[row * uvStride], uvStride);

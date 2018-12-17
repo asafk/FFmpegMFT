@@ -16,7 +16,7 @@ public:
 	bool init(std::string codecName);
 	bool release();	
 
-	bool decode(unsigned char* in, int in_size, unsigned char*& out, int pitch);
+	bool decode(unsigned char* in, int in_size, void*& out, int pitch);
 	void flush();
 
 private:

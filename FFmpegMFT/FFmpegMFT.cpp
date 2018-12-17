@@ -12,9 +12,9 @@
 
 FFmpegMFT::FFmpegMFT(void) :
     m_cRef(1),
-	m_h3dDevice(NULL),
+	m_h3dDevice(NULL)/*,
 	m_pConfigs(NULL),
-	m_pRenderTargetFormats(NULL)
+	m_pRenderTargetFormats(NULL)*/
 {
 	OutputDebugString(_T("\n\nFFmpegMFT\n\n"));
 }
@@ -944,6 +944,10 @@ HRESULT FFmpegMFT::ProcessOutput(
 			outputSample = pOutputSampleBuffer[0].pSample;			
 			hr = outputSample->GetBufferByIndex(0, &pOutputMediaBuffer);
 			BREAK_ON_FAIL(hr);
+
+			///do the decoding
+			hr = decode(pInputMediaBuffer,pOutputMediaBuffer);
+			BREAK_ON_FAIL(hr);
 		}else{
 			//hr = m_p3DDeviceManager->TestDevice(m_h3dDevice);
 			//if(hr == DXVA2_E_NEW_VIDEO_DEVICE)
@@ -964,7 +968,7 @@ HRESULT FFmpegMFT::ProcessOutput(
 			hr = MFGetAttributeSize(m_pOutputType, MF_MT_FRAME_SIZE, &uiWidthInPixels, &uiHeightInPixels);
 			BREAK_ON_FAIL(hr);
 			//now let's allocate uncompressed buffers for the outputs
-			LPDIRECT3DSURFACE9 surface;
+			
 			hr = m_pdxVideoDecoderService->CreateSurface(
 				uiWidthInPixels,
 				uiHeightInPixels,
@@ -973,23 +977,26 @@ HRESULT FFmpegMFT::ProcessOutput(
 				D3DPOOL_DEFAULT,
 				0,
 				DXVA2_VideoDecoderRenderTarget,
-				&surface,
+				&m_surface,
 				NULL);
 
 			BREAK_ON_FAIL(hr);
 
 
-			hr = MFCreateVideoSampleFromSurface(surface, &outSample);
+			hr = MFCreateVideoSampleFromSurface(m_surface, &outSample);
 			BREAK_ON_FAIL(hr);
 
 			outputSample = outSample;			
 			hr = outputSample->GetBufferByIndex(0, &pOutputMediaBuffer);
 			BREAK_ON_FAIL(hr);
-		}
 
-		///do the decoding
-		hr = decode(pInputMediaBuffer,pOutputMediaBuffer);
-		BREAK_ON_FAIL(hr);
+			pOutputSampleBuffer[0].pSample = outputSample;
+			pOutputSampleBuffer[0].pSample->AddRef();
+
+			///do the decoding
+			hr = decode(pInputMediaBuffer,pOutputMediaBuffer);
+			BREAK_ON_FAIL(hr);
+		}		
 
 		//timestamp
 		LONGLONG sampleTime;
@@ -1034,17 +1041,21 @@ HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOut
 		hr = MFGetAttributeSize(m_pOutputType, MF_MT_FRAME_SIZE, &width, &height);
     }
 
-    if (SUCCEEDED(hr))
+    if (SUCCEEDED(hr) && m_p3DDeviceManager == NULL)
     {
         hr = videoBuffer.LockBuffer(lDefaultStride, height, &pOut, &lActualStride);
     }
+	else if(SUCCEEDED(hr))
+	{
+		pOut = (BYTE*)m_surface;
+	}
 
 	if (SUCCEEDED(hr))
     {
         hr = inputMediaBuffer->Lock(&pIn, NULL, &lenIn);
     }
 
-	bool bret = m_decoder.decode(pIn,lenIn,pOut,lActualStride);
+	bool bret = m_decoder.decode(pIn,lenIn,(void*&)pOut,lActualStride);
 
 	hr = inputMediaBuffer->Unlock();
 
@@ -1272,8 +1283,8 @@ HRESULT FFmpegMFT::CheckInputMediaType(IMFMediaType* pmt)
         }
 
 		// get the requested interlacing format
-        hr = pType->GetUINT32(MF_MT_INTERLACE_MODE, (UINT32*)&interlacingMode);
-        BREAK_ON_FAIL(hr);
+       /* hr = pType->GetUINT32(MF_MT_INTERLACE_MODE, (UINT32*)&interlacingMode);
+        BREAK_ON_FAIL(hr);*/
 
 		//Find fps from the input type
 		UINT32 framerate_n, framerate_d;
@@ -1285,7 +1296,7 @@ HRESULT FFmpegMFT::CheckInputMediaType(IMFMediaType* pmt)
 		hr = MFGetAttributeSize(pType, MF_MT_FRAME_SIZE, &uiWidthInPixels, &uiHeightInPixels);
 		BREAK_ON_FAIL(hr);
 
-		//Supporting DXVA 2.0 - Finding a Decoder Configuration
+		//Disable Supporting DXVA 2.0
 		if(m_pdxVideoDecoderService != NULL){
 			hr = MF_E_UNSUPPORTED_D3D_TYPE;
 		}

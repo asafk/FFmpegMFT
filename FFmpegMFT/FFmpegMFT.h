@@ -80,11 +80,12 @@ class FFmpegMFT :  public IMFTransform
 		HANDLE m_h3dDevice;
 		CComPtr<IDirect3DDeviceManager9> m_p3DDeviceManager; //3d manager
 		CComPtr<IDirectXVideoDecoderService> m_pdxVideoDecoderService; //video DXVA service
-		CComPtr<IDirectXVideoDecoder> m_pVideoDecoder;
-		D3DFORMAT* m_pRenderTargetFormats;
-		DXVA2_VideoDesc m_Dxva2Desc;
-		DXVA2_ConfigPictureDecode* m_pConfigs;
-		CComPtr<IMFSample>  m_pSampleOut[3];
+		//CComPtr<IDirectXVideoDecoder> m_pVideoDecoder;
+		//D3DFORMAT* m_pRenderTargetFormats;
+		//DXVA2_VideoDesc m_Dxva2Desc;
+		//DXVA2_ConfigPictureDecode* m_pConfigs;
+		//CComPtr<IMFSample>  m_pSampleOut[3];
+		LPDIRECT3DSURFACE9 m_surface;
 
 
 
