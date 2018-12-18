@@ -1,17 +1,23 @@
 #include "stdafx.h"
 #include "cpu_decoder_impl.h"
 
-cpu_decoder_impl::cpu_decoder_impl()
+cpu_decoder_impl::cpu_decoder_impl():
+m_bInit(false)
 {
 }
 
 cpu_decoder_impl::~cpu_decoder_impl()
 {
+	release();
 }
 
 bool cpu_decoder_impl::init(std::string codecName)
 {
-	bool bRet = true;	
+	bool bRet = true;
+
+	//validation
+	if(m_bInit)
+		return bRet;
 	
 	do
 	{
@@ -52,14 +58,16 @@ bool cpu_decoder_impl::init(std::string codecName)
 		}
 
 	}
-	while (false);
-        
+	while (false);        
 
-	return bRet;
+	return m_bInit = bRet;
 }
 
 bool cpu_decoder_impl::release()
 {
+	if(!m_bInit)
+		return true;
+
 	flush();
 
 	if(m_avContext != NULL) {
@@ -77,13 +85,16 @@ bool cpu_decoder_impl::release()
 		m_avPkt = NULL;
 	}
 
-	return true;
+	return m_bInit = false;
 }
 
 void cpu_decoder_impl::flush()
 {
 	do
 	{
+		if(m_avContext == NULL || m_avFrame == NULL)
+			return;
+
 		int ret = avcodec_send_packet(m_avContext, NULL);
 		if (ret < 0) {
 		    break;
@@ -131,10 +142,10 @@ void cpu_decoder_impl::flush()
 //
 //    return 0;
 //}
-enum AVPixelFormat cpu_decoder_impl::get_format(struct AVCodecContext *s, const enum AVPixelFormat * fmt)
-{
-	return AV_PIX_FMT_YUV420P;
-}
+//enum AVPixelFormat cpu_decoder_impl::get_format(struct AVCodecContext *s, const enum AVPixelFormat * fmt)
+//{
+//	return AV_PIX_FMT_YUV420P;
+//}
 
 bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pitch)
 {
@@ -174,28 +185,29 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 
 	if(bRet == true)
 	{
-		if(m_avFrame->format == AV_PIX_FMT_YUV420P || m_avFrame->format == AV_PIX_FMT_YUVJ420P){
-		DWORD height = m_avFrame->height;
-		DWORD yStride = m_avFrame->width;
-		DWORD uvStride =  m_avFrame->width / 2;
-		BYTE* pY = m_avFrame->data[0];
-		BYTE* pV = m_avFrame->data[2];
-		BYTE* pU = m_avFrame->data[1];
-		DWORD uvHeight = height / 2;
-		LONG uvPitch = pitch / 2;
+		if(m_avFrame->format == AV_PIX_FMT_YUV420P ||
+			m_avFrame->format == AV_PIX_FMT_YUVJ420P){
+			DWORD height = m_avFrame->height;
+			DWORD yStride = m_avFrame->width;
+			DWORD uvStride =  m_avFrame->width / 2;
+			BYTE* pY = m_avFrame->data[0];
+			BYTE* pV = m_avFrame->data[2];
+			BYTE* pU = m_avFrame->data[1];
+			DWORD uvHeight = height / 2;
+			LONG uvPitch = pitch / 2;
 
-		for (DWORD row = 0; row < height; row++)
-			memcpy((BYTE*)out + row * pitch, &pY[row * yStride], yStride);
+			for (DWORD row = 0; row < height; row++)
+				memcpy((BYTE*)out + row * pitch, &pY[row * yStride], yStride);
 
-		BYTE* pVBuffer = (BYTE*)out + height * pitch;
+			BYTE* pVBuffer = (BYTE*)out + height * pitch;
 
-		for (DWORD row = 0; row < uvHeight; row++)
-			memcpy(pVBuffer + row * uvPitch, &pV[row * uvStride], uvStride);
+			for (DWORD row = 0; row < uvHeight; row++)
+				memcpy(pVBuffer + row * uvPitch, &pV[row * uvStride], uvStride);
 
-		BYTE* pUBuffer = pVBuffer + height * pitch / 4;
+			BYTE* pUBuffer = pVBuffer + height * pitch / 4;
 
-		for (DWORD row = 0; row < uvHeight; row++)
-			memcpy(pUBuffer + row * uvPitch, &pU[row * uvStride], uvStride);
+			for (DWORD row = 0; row < uvHeight; row++)
+				memcpy(pUBuffer + row * uvPitch, &pU[row * uvStride], uvStride);
 		}
 	}
 

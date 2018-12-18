@@ -16,12 +16,12 @@ FFmpegMFT::FFmpegMFT(void) :
 	m_pConfigs(NULL),
 	m_pRenderTargetFormats(NULL)*/
 {
-	OutputDebugString(_T("\n\nFFmpegMFT\n\n"));
+	//OutputDebugString(_T("\n\nFFmpegMFT\n\n"));
 }
 
 FFmpegMFT::~FFmpegMFT(void)
 {
-	OutputDebugString(_T("\n\n~FFmpegMFT\n\n"));
+	//OutputDebugString(_T("\n\n~FFmpegMFT\n\n"));
     // reduce the count of DLL handles so that we can unload the DLL when 
     // components in it are no longer being used
     InterlockedDecrement(&g_dllLockCount);
@@ -96,7 +96,7 @@ HRESULT FFmpegMFT::GetStreamLimits(
     DWORD   *pdwOutputMinimum,
     DWORD   *pdwOutputMaximum)
 {
-	OutputDebugString(_T("\n\nGetStreamLimits\n\n"));
+	//OutputDebugString(_T("\n\nGetStreamLimits\n\n"));
 
     if (pdwInputMinimum == NULL ||
         pdwInputMaximum == NULL ||
@@ -125,7 +125,7 @@ HRESULT FFmpegMFT::GetStreamCount(
     DWORD   *pcInputStreams,
     DWORD   *pcOutputStreams)
 {
-	OutputDebugString(_T("\n\nGetStreamCount\n\n"));
+	//OutputDebugString(_T("\n\nGetStreamCount\n\n"));
     // check the pointers
     if (pcInputStreams == NULL  ||  pcOutputStreams == NULL)
     {
@@ -150,7 +150,7 @@ HRESULT FFmpegMFT::GetStreamIDs(
     DWORD   dwOutputIDArraySize,
     DWORD   *pdwOutputIDs)
 {
-	OutputDebugString(_T("\n\nGetStreamIDs\n\n"));
+	//OutputDebugString(_T("\n\nGetStreamIDs\n\n"));
     return E_NOTIMPL;
 }
 
@@ -161,7 +161,7 @@ HRESULT FFmpegMFT::GetInputStreamInfo(
     DWORD                   dwInputStreamID,  // stream being queried.
     MFT_INPUT_STREAM_INFO*  pStreamInfo)      // stream information
 {
-	OutputDebugString(_T("\n\nGetInputStreamInfo\n\n"));
+	//OutputDebugString(_T("\n\nGetInputStreamInfo\n\n"));
 
     HRESULT hr = S_OK;
 
@@ -271,7 +271,7 @@ HRESULT FFmpegMFT::GetOutputStreamInfo(
 
 HRESULT FFmpegMFT::GetAttributes(IMFAttributes** pAttributes)
 {
-	OutputDebugString(_T("\n\nGetAttributes\n\n"));
+	//OutputDebugString(_T("\n\nGetAttributes\n\n"));
     
 	HRESULT hr = S_OK;
     CComPtr<IMFAttributes> att;
@@ -312,7 +312,7 @@ HRESULT FFmpegMFT::GetInputStreamAttributes(
     DWORD           dwInputStreamID,
     IMFAttributes** ppAttributes)
 {
-	OutputDebugString(_T("\n\nGetInputStreamAttributes\n\n"));
+	//OutputDebugString(_T("\n\nGetInputStreamAttributes\n\n"));
     // This MFT does not support any attributes, so the method is not implemented.
     return E_NOTIMPL;
 }
@@ -328,7 +328,7 @@ HRESULT FFmpegMFT::GetOutputStreamAttributes(
     DWORD           dwOutputStreamID,
     IMFAttributes** ppAttributes)
 {
-	OutputDebugString(_T("\n\nGetOutputStreamAttributes\n\n"));
+	//OutputDebugString(_T("\n\nGetOutputStreamAttributes\n\n"));
     // This MFT does not support any attributes, so the method is not implemented.
     return E_NOTIMPL;
 }
@@ -341,7 +341,7 @@ HRESULT FFmpegMFT::GetOutputStreamAttributes(
 //
 HRESULT FFmpegMFT::DeleteInputStream(DWORD dwStreamID)
 {
-	OutputDebugString(_T("\n\nDeleteInputStream\n\n"));
+	//OutputDebugString(_T("\n\nDeleteInputStream\n\n"));
     return E_NOTIMPL;
 }
 
@@ -355,7 +355,7 @@ HRESULT FFmpegMFT::AddInputStreams(
     DWORD   cStreams,
     DWORD*  adwStreamIDs)
 {
-	OutputDebugString(_T("\n\nAddInputStreams\n\n"));
+	//OutputDebugString(_T("\n\nAddInputStreams\n\n"));
     return E_NOTIMPL;
 }
 
@@ -416,7 +416,7 @@ HRESULT FFmpegMFT::GetOutputAvailableType(
     DWORD           dwTypeIndex, // 0-based
     IMFMediaType    **ppType)
 {
-	OutputDebugString(_T("\n\nGetOutputAvailableType\n\n"));
+	//OutputDebugString(_T("\n\nGetOutputAvailableType\n\n"));
 
     HRESULT hr = S_OK;
     CComPtr<IMFMediaType> pmt;
@@ -460,12 +460,11 @@ HRESULT FFmpegMFT::GetOutputAvailableType(
 HRESULT FFmpegMFT::SetInputType(DWORD dwInputStreamID, IMFMediaType* pType, 
     DWORD dwFlags)
 {
-	OutputDebugString(_T("\n\nSetInputType\n\n"));
+	//OutputDebugString(_T("\n\nSetInputType\n\n"));
 
     HRESULT hr = S_OK;
-    //CComPtr<IMFAttributes> pTypeAttributes = pType;
 
-    do
+	do
     {
         // lock the MFT - the lock will disengage when variable goes out of scope
         CComCritSecLock<CComAutoCriticalSection> lock(m_critSec);
@@ -521,7 +520,7 @@ HRESULT FFmpegMFT::SetOutputType(
     IMFMediaType*   pmt, // Can be NULL to clear the output type.
     DWORD           dwFlags)
 {
-	OutputDebugString(_T("\n\nSetOutputType\n\n"));
+	//OutputDebugString(_T("\n\nSetOutputType\n\n"));
 
     HRESULT hr = S_OK;
 
@@ -583,7 +582,7 @@ HRESULT FFmpegMFT::GetInputCurrentType(
     DWORD           dwInputStreamID,
     IMFMediaType**  ppType)
 {
-	OutputDebugString(_T("\n\nGetInputCurrentType\n\n"));
+	//OutputDebugString(_T("\n\nGetInputCurrentType\n\n"));
 
     HRESULT hr = S_OK;
 
@@ -621,7 +620,7 @@ HRESULT FFmpegMFT::GetOutputCurrentType(
     DWORD           dwOutputStreamID,
     IMFMediaType**  ppType)
 {
-	OutputDebugString(_T("\n\nGetOutputCurrentType\n\n"));
+	//OutputDebugString(_T("\n\nGetOutputCurrentType\n\n"));
 
     HRESULT hr = S_OK;
 
@@ -659,7 +658,7 @@ HRESULT FFmpegMFT::GetInputStatus(
     DWORD           dwInputStreamID,
     DWORD*          pdwFlags)
 {
-	OutputDebugString(_T("\n\nGetInputStatus\n\n"));
+	//OutputDebugString(_T("\n\nGetInputStatus\n\n"));
 
     CComCritSecLock<CComAutoCriticalSection> lock(m_critSec);
 
@@ -698,7 +697,7 @@ HRESULT FFmpegMFT::GetInputStatus(
 //
 HRESULT FFmpegMFT::GetOutputStatus(DWORD* pdwFlags)
 {
-	OutputDebugString(_T("\n\nGetOutputStatus\n\n"));
+	//OutputDebugString(_T("\n\nGetOutputStatus\n\n"));
     return E_NOTIMPL;
 }
 
@@ -711,7 +710,7 @@ HRESULT FFmpegMFT::SetOutputBounds(
     LONGLONG        hnsLowerBound,
     LONGLONG        hnsUpperBound)
 {
-	OutputDebugString(_T("\n\nSetOutputBounds\n\n"));
+	//OutputDebugString(_T("\n\nSetOutputBounds\n\n"));
 
     return E_NOTIMPL;
 }
@@ -725,7 +724,7 @@ HRESULT FFmpegMFT::ProcessEvent(
     DWORD              dwInputStreamID,
     IMFMediaEvent*     pEvent)
 {
-	OutputDebugString(_T("\n\nProcessEvent\n\n"));
+	//OutputDebugString(_T("\n\nProcessEvent\n\n"));
 
     return E_NOTIMPL;
 }
@@ -740,28 +739,23 @@ HRESULT FFmpegMFT::ProcessMessage(
     MFT_MESSAGE_TYPE    eMessage,
     ULONG_PTR           ulParam)
 {
-	OutputDebugString(_T("\n\nProcessMessage\n\n"));
+	//OutputDebugString(_T("\n\nProcessMessage\n\n"));
 
     HRESULT hr = S_OK;
 
-    CComCritSecLock<CComAutoCriticalSection> lock(m_critSec);    
+    CComCritSecLock<CComAutoCriticalSection> lock(m_critSec);
 
-    if(eMessage == MFT_MESSAGE_COMMAND_FLUSH)
-    {
-        // Flush the MFT - release all samples in it and reset the state
-		m_decoder.flush();
-        m_pSample = NULL;    	
-    }
-    else if(eMessage ==  MFT_MESSAGE_COMMAND_DRAIN)
-    {
-        // The drain command tells the MFT not to accept any more input until
-        // all of the pending output has been processed. That is the default 
-        // behavior of this MFT, so there is nothing to do.
-    }
-	else if(eMessage == MFT_MESSAGE_SET_D3D_MANAGER)
+
+	switch (eMessage)
 	{
-		do
-	    {
+		case MFT_MESSAGE_COMMAND_FLUSH:
+		case MFT_MESSAGE_COMMAND_DRAIN:
+			// Flush the MFT - release all samples in it and reset the state
+			m_decoder.flush();
+			m_pSample = NULL;
+		break;
+
+		case MFT_MESSAGE_SET_D3D_MANAGER:
 			if(ulParam == NULL) //fallback to SW decoding
 			{
 				if(m_h3dDevice != NULL)
@@ -801,14 +795,11 @@ HRESULT FFmpegMFT::ProcessMessage(
 
 				m_decoder.setDecoderStrategy(new hw_decoder_impl());
 			}
-	    }
-	    while (false);
-	}
-    else if(eMessage == MFT_MESSAGE_NOTIFY_BEGIN_STREAMING)
-    {
-		do
-	    {
-		    // Extract the subtype to make sure that the subtype is one that we support
+		break;
+
+		case MFT_MESSAGE_NOTIFY_BEGIN_STREAMING:
+		case MFT_MESSAGE_NOTIFY_START_OF_STREAM:
+			// Extract the subtype to make sure that the subtype is one that we support
 		    GUID subtype;
 		    hr = m_pInputType->GetGUID(MF_MT_SUBTYPE, &subtype);
 		    BREAK_ON_FAIL(hr);
@@ -822,26 +813,17 @@ HRESULT FFmpegMFT::ProcessMessage(
 			else if(InlineIsEqualGUID(subtype,MFVideoFormat_H265) == TRUE || InlineIsEqualGUID(subtype,MFVideoFormat_HEVC) == TRUE )
 			{
 				m_decoder.init("HEVC");
-			}
-			else
-		    {
-			    hr = MF_E_INVALIDMEDIATYPE;
-			    break;
-		    }
-	    }
-	    while (false);
-    }
-    else if(eMessage == MFT_MESSAGE_NOTIFY_END_STREAMING)
-    {
-		m_decoder.release();
-    }
-    else if(eMessage == MFT_MESSAGE_NOTIFY_END_OF_STREAM)
-    {
-    }
-    else if(eMessage == MFT_MESSAGE_NOTIFY_START_OF_STREAM)
-    {	  
-    }
+			}		   
+		break;
 
+		case MFT_MESSAGE_NOTIFY_END_STREAMING:
+		case MFT_MESSAGE_NOTIFY_END_OF_STREAM:
+			m_decoder.release();
+		break;
+
+		default:
+		break;
+	}
     return hr;
 }
 
@@ -998,6 +980,8 @@ HRESULT FFmpegMFT::ProcessOutput(
 			BREAK_ON_FAIL(hr);
 		}		
 
+		hr = m_pSample->CopyAllItems(outputSample);
+		BREAK_ON_FAIL(hr);
 		//timestamp
 		LONGLONG sampleTime;
 		hr = m_pSample->GetSampleTime(&sampleTime);

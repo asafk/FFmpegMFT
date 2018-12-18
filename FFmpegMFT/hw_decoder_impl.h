@@ -5,6 +5,7 @@
 extern "C"
 {
 	#include <libavcodec/avcodec.h>
+	#include <libavutil/hwcontext.h>
 }
 
 class hw_decoder_impl : public IDecoderStrategy

@@ -26,11 +26,13 @@ private:
 	AVFrame *m_avFrame;
 	AVPacket *m_avPkt;
 
+	bool m_bInit;
+
 	//int m_pitch;
 	//unsigned char* m_pData;
 
 	//static int my_get_buffer(struct AVCodecContext *c, AVFrame *frame, int flags);
 	//int my_get_buffer_real(struct AVCodecContext *c, AVFrame *pic, int flags);
-	static enum AVPixelFormat get_format(struct AVCodecContext *s, const enum AVPixelFormat * fmt);
+	//static enum AVPixelFormat get_format(struct AVCodecContext *s, const enum AVPixelFormat * fmt);
 };
 
