@@ -36,10 +36,13 @@
     <ClInclude Include="hw_decoder_impl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Decoder.h">
+    <ClInclude Include="IDecoderStrategy.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="IDecoderStrategy.h">
+    <ClInclude Include="decoder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="abs_decoder_impl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -62,7 +65,10 @@
     <ClCompile Include="hw_decoder_impl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Decoder.cpp">
+    <ClCompile Include="decoder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="abs_decoder_impl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

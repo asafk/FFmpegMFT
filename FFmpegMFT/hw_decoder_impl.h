@@ -1,5 +1,5 @@
 #pragma once
-#include "IDecoderStrategy.h"
+#include "abs_decoder_impl.h"
 #include <d3d9.h>
 
 extern "C"
@@ -8,7 +8,7 @@ extern "C"
 	#include <libavutil/hwcontext.h>
 }
 
-class hw_decoder_impl : public IDecoderStrategy
+class hw_decoder_impl : public abs_decoder_impl
 {
 public:
 	hw_decoder_impl();
@@ -18,14 +18,9 @@ public:
 	bool release();	
 
 	bool decode(unsigned char* in, int in_size, void*& surface, int none);
-	void flush();
 
 private:
-	/*FFmpeg related members*/
-	AVCodecContext* m_decoder_ctx;
-	AVCodec* m_decoder;
-	AVPacket* m_packet;
-	AVFrame *m_avFrame;
+
 	enum AVHWDeviceType m_type;
 
 

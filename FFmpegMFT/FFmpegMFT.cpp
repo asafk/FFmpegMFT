@@ -1005,9 +1005,6 @@ HRESULT FFmpegMFT::ProcessOutput(
 
 		m_pSample.Release();
 
-		/*wchar_t buf[1024];
-		wsprintf(buf,_T("sampleTime %I64d (%I64d) sampleDuration %I64d\n"),sampleTime, m_sampleTime, sampleDuration);
-    	OutputDebugString(buf);*/
 		DebugOut((L"sampleTime %I64d (%I64d) sampleDuration %I64d\n"),sampleTime, m_sampleTime, sampleDuration);
 
         // Set status flags for output

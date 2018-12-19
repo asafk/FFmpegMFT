@@ -2,14 +2,9 @@
 #include "hw_decoder_impl.h"
 
 
-hw_decoder_impl::hw_decoder_impl() : 
-m_decoder_ctx(NULL),
-m_decoder(NULL),
-m_packet(NULL),
-m_avFrame(NULL)
+hw_decoder_impl::hw_decoder_impl()
 {
 }
-
 
 hw_decoder_impl::~hw_decoder_impl()
 {
@@ -18,17 +13,22 @@ hw_decoder_impl::~hw_decoder_impl()
 bool hw_decoder_impl::init(std::string codecName)
 {
 	bool bRet = true;
+
+	//validation
+	if(m_bInit)
+		return bRet;
+
 	do
 	{
-		m_packet = av_packet_alloc();
-		if (m_packet == NULL){
+		m_avPkt = av_packet_alloc();
+		if (m_avPkt == NULL){
 			bRet = false;
 			break;
 		}
 
 		int i;
 
-		m_type = av_hwdevice_find_type_by_name("d3d11va"); //dxva2 failed
+		m_type = av_hwdevice_find_type_by_name("dxva2"); //dxva2 failed
 	    if (m_type == AV_HWDEVICE_TYPE_NONE) {
 	        fprintf(stderr, "Device type %s is not supported.\n", "d3d11va");
 	        fprintf(stderr, "Available device types:");
@@ -42,20 +42,20 @@ bool hw_decoder_impl::init(std::string codecName)
 		/* find the video decoder according to codecName*/
 		/* currently support only HEVC or H.264*/
 		if(codecName.compare("HEVC") == 0)
-			m_decoder = avcodec_find_decoder(AV_CODEC_ID_HEVC);
+			m_avCodec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
 		else
-			m_decoder = avcodec_find_decoder(AV_CODEC_ID_H264);
+			m_avCodec = avcodec_find_decoder(AV_CODEC_ID_H264);
 
-	    if (m_decoder == NULL) {
+	    if (m_avCodec == NULL) {
 			bRet = false;
 			break;
 	    }
 
 		for (i = 0;; i++) {
-	        const AVCodecHWConfig *config = avcodec_get_hw_config(m_decoder, i);
+	        const AVCodecHWConfig *config = avcodec_get_hw_config(m_avCodec, i);
 	        if (!config) {
 	            fprintf(stderr, "Decoder %s does not support device type %s.\n",
-	                    m_decoder->name, av_hwdevice_get_type_name(m_type));
+	                    m_avCodec->name, av_hwdevice_get_type_name(m_type));
 	            bRet = false;
 	        	break;
 	        }
@@ -69,14 +69,14 @@ bool hw_decoder_impl::init(std::string codecName)
 		if(bRet == false)
 			break;
 
-		if (!(m_decoder_ctx = avcodec_alloc_context3(m_decoder))){
+		if (!(m_avContext = avcodec_alloc_context3(m_avCodec))){
 			 bRet = false;
 			 break;
 		}
 
-		m_decoder_ctx->opaque = this;
-		m_decoder_ctx->get_format = get_hw_format;
-		m_decoder_ctx->get_buffer2 = get_buffer;
+		m_avContext->opaque = this;
+		m_avContext->get_format = get_hw_format;
+		m_avContext->get_buffer2 = get_buffer;
 
 	    if ((av_hwdevice_ctx_create(&m_hw_device_ctx, m_type,
 	                                      NULL, NULL, 0)) < 0) {
@@ -84,9 +84,9 @@ bool hw_decoder_impl::init(std::string codecName)
 	    	bRet = false;
 	    	break;
 	    }
-	    m_decoder_ctx->hw_device_ctx = av_buffer_ref(m_hw_device_ctx);
+	    m_avContext->hw_device_ctx = av_buffer_ref(m_hw_device_ctx);
 
-		if ((avcodec_open2(m_decoder_ctx, m_decoder, NULL)) < 0) {
+		if ((avcodec_open2(m_avContext, m_avCodec, NULL)) < 0) {
 	        fprintf(stderr, "Failed to open codec for stream \n");
 			bRet = false;
 	    	break;
@@ -106,60 +106,16 @@ bool hw_decoder_impl::init(std::string codecName)
 
 bool hw_decoder_impl::release()
 {
-	bool bRet = true;
-	do
-	{
-		if(m_packet != NULL){
-			av_packet_free(&m_packet);
-			m_packet = NULL;
-		}
+	if(!m_bInit)
+		return true;
 
-		if(m_avFrame != NULL){
-			av_frame_free(&m_avFrame);
-			m_avFrame = NULL;
-		}
-
-		if(m_decoder_ctx != NULL){
-			avcodec_free_context(&m_decoder_ctx);
-			m_decoder_ctx = NULL;
-		}
-
-		if(m_hw_device_ctx != NULL){
-			av_buffer_unref(&m_hw_device_ctx);
-			m_hw_device_ctx = NULL;
-		}
+	if(m_hw_device_ctx != NULL){
+		av_buffer_unref(&m_hw_device_ctx);
+		m_hw_device_ctx = NULL;
 	}
-	while (false);
 
-	return bRet;
+	return abs_decoder_impl::release();
 }
-
-void hw_decoder_impl::flush()
-{
-	AVFrame *frame = NULL;
-	do
-	{
-		if (!(frame = av_frame_alloc())) {
-			fprintf(stderr, "Can not alloc frame\n");
-			break;
-		}
-
-		int ret = avcodec_send_packet(m_decoder_ctx, NULL);
-		if (ret < 0) {
-		    break;
-		}
-		while (ret >= 0) 
-		{
-		    ret = avcodec_receive_frame(m_decoder_ctx, frame);
-		    if (ret == AVERROR_EOF)
-		        break;
-		}
-
-		av_frame_free(&frame);
-	} while (false);
-
-	avcodec_flush_buffers(m_decoder_ctx);
-}	
 
 bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int none)
 {
@@ -169,17 +125,17 @@ bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int
 
 	do
 	{
-		m_packet->data = in;
-		m_packet->size = in_size;
+		m_avPkt->data = in;
+		m_avPkt->size = in_size;
 		m_surface = (LPDIRECT3DSURFACE9)surface;
 
-		ret = avcodec_send_packet(m_decoder_ctx, m_packet);
+		ret = avcodec_send_packet(m_avContext, m_avPkt);
 		if (ret < 0) {
 			bRet = false;
 			break;
 		}
 
-        ret = avcodec_receive_frame(m_decoder_ctx, m_avFrame);
+        ret = avcodec_receive_frame(m_avContext, m_avFrame);
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF){			
 			bRet = false;
             break;

@@ -163,9 +163,10 @@ regsvr32 $(TargetPath) /s</Command>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Decoder.h" />
+    <ClInclude Include="abs_decoder_impl.h" />
     <ClInclude Include="CBufferLock.h" />
     <ClInclude Include="cpu_decoder_impl.h" />
+    <ClInclude Include="decoder.h" />
     <ClInclude Include="FFmpegMFT.h" />
     <ClInclude Include="hw_decoder_impl.h" />
     <ClInclude Include="IDecoderStrategy.h" />
@@ -174,8 +175,9 @@ regsvr32 $(TargetPath) /s</Command>
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Decoder.cpp" />
+    <ClCompile Include="abs_decoder_impl.cpp" />
     <ClCompile Include="cpu_decoder_impl.cpp" />
+    <ClCompile Include="decoder.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="FFmpegMFT.cpp" />
     <ClCompile Include="hw_decoder_impl.cpp" />
