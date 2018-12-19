@@ -964,7 +964,6 @@ HRESULT FFmpegMFT::ProcessOutput(
 
 			BREAK_ON_FAIL(hr);
 
-
 			hr = MFCreateVideoSampleFromSurface(m_surface, &outSample);
 			BREAK_ON_FAIL(hr);
 
@@ -980,20 +979,20 @@ HRESULT FFmpegMFT::ProcessOutput(
 			BREAK_ON_FAIL(hr);
 		}		
 
-		hr = m_pSample->CopyAllItems(outputSample);
+    	//TODO: this is workaround for the TopoEdit , maybe in future we will need to set the real sample time
+#if 1 
+		hr = outputSample->SetSampleTime(0);
 		BREAK_ON_FAIL(hr);
+#else
 		//timestamp
 		LONGLONG sampleTime;
 		hr = m_pSample->GetSampleTime(&sampleTime);
 		BREAK_ON_FAIL(hr);
 		hr = outputSample->SetSampleTime(sampleTime);
 		BREAK_ON_FAIL(hr);
+#endif		
 		
 		m_pSample.Release();
-
-        //// Detach the output sample from the MFT and put the pointer for
-        //// the processed sample into the output buffer
-        //pOutputSampleBuffer[0].pSample = m_pSample.Detach();
 
         // Set status flags for output
         pOutputSampleBuffer[0].dwStatus = 0;
