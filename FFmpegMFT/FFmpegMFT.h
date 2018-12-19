@@ -75,6 +75,7 @@ class FFmpegMFT :  public IMFTransform
 	    CComPtr<IMFSample>  m_pSample;           // Input sample.
 	    CComPtr<IMFMediaType> m_pInputType;      // Input media type.
 	    CComPtr<IMFMediaType> m_pOutputType;     // Output media type.
+		LONGLONG m_sampleTime;
 
 		//DXVA  support
 		HANDLE m_h3dDevice;

@@ -9,9 +9,20 @@
 
 #include "CBufferLock.h"
 
+void DebugOut(const LPCWSTR fmt, ...)
+{
+  va_list argp; 
+  va_start(argp, fmt); 
+  wchar_t dbg_out[4096];
+  vswprintf_s(dbg_out, fmt, argp);
+  va_end(argp); 
+  OutputDebugString(dbg_out);
+}
+
 
 FFmpegMFT::FFmpegMFT(void) :
     m_cRef(1),
+	m_sampleTime(0),
 	m_h3dDevice(NULL)/*,
 	m_pConfigs(NULL),
 	m_pRenderTargetFormats(NULL)*/
@@ -813,7 +824,8 @@ HRESULT FFmpegMFT::ProcessMessage(
 			else if(InlineIsEqualGUID(subtype,MFVideoFormat_H265) == TRUE || InlineIsEqualGUID(subtype,MFVideoFormat_HEVC) == TRUE )
 			{
 				m_decoder.init("HEVC");
-			}		   
+			}
+			m_sampleTime = 0;
 		break;
 
 		case MFT_MESSAGE_NOTIFY_END_STREAMING:
@@ -977,22 +989,26 @@ HRESULT FFmpegMFT::ProcessOutput(
 			///do the decoding
 			hr = decode(pInputMediaBuffer,pOutputMediaBuffer);
 			BREAK_ON_FAIL(hr);
-		}		
+		}	
 
-    	//TODO: this is workaround for the TopoEdit , maybe in future we will need to set the real sample time
-#if 1 
-		hr = outputSample->SetSampleTime(0);
-		BREAK_ON_FAIL(hr);
-#else
-		//timestamp
 		LONGLONG sampleTime;
 		hr = m_pSample->GetSampleTime(&sampleTime);
 		BREAK_ON_FAIL(hr);
-		hr = outputSample->SetSampleTime(sampleTime);
+		LONGLONG sampleDuration;
+		hr = m_pSample->GetSampleDuration(&sampleDuration);
 		BREAK_ON_FAIL(hr);
-#endif		
 		
+		hr = outputSample->SetSampleTime(m_sampleTime);
+		BREAK_ON_FAIL(hr);
+		
+		m_sampleTime += sampleDuration;
+
 		m_pSample.Release();
+
+		/*wchar_t buf[1024];
+		wsprintf(buf,_T("sampleTime %I64d (%I64d) sampleDuration %I64d\n"),sampleTime, m_sampleTime, sampleDuration);
+    	OutputDebugString(buf);*/
+		DebugOut((L"sampleTime %I64d (%I64d) sampleDuration %I64d\n"),sampleTime, m_sampleTime, sampleDuration);
 
         // Set status flags for output
         pOutputSampleBuffer[0].dwStatus = 0;
@@ -1002,6 +1018,7 @@ HRESULT FFmpegMFT::ProcessOutput(
 
     return hr;
 }
+
 
 HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOutputMediaBuffer)
 {
