@@ -6,19 +6,8 @@
 #include <dxva2api.h>
 #include <uuids.h>
 
-
 #include "CBufferLock.h"
-
-void DebugOut(const LPCWSTR fmt, ...)
-{
-  va_list argp; 
-  va_start(argp, fmt); 
-  wchar_t dbg_out[4096];
-  vswprintf_s(dbg_out, fmt, argp);
-  va_end(argp); 
-  OutputDebugString(dbg_out);
-}
-
+#include "Utils.h"
 
 FFmpegMFT::FFmpegMFT(void) :
     m_cRef(1),
