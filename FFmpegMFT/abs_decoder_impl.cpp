@@ -7,7 +7,8 @@ m_avCodec(NULL),
 m_avContext(NULL),
 m_avFrame(NULL),
 m_avPkt(NULL),
-m_bInit(false)
+m_bInit(false),
+m_dwPixelFmt(0)
 {
 }
 
@@ -16,7 +17,7 @@ abs_decoder_impl::~abs_decoder_impl()
 	release();
 }
 
-bool abs_decoder_impl::init(std::string codecName)
+bool abs_decoder_impl::init(std::string codecName, DWORD pixel_format)
 {
 	bool bRet = true;
 
@@ -62,6 +63,7 @@ bool abs_decoder_impl::init(std::string codecName)
 			break;
 		}
 
+		m_dwPixelFmt = pixel_format;
 	}
 	while (false);        
 

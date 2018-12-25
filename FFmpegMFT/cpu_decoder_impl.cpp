@@ -35,8 +35,7 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 		if (ret < 0) {
 			bRet = false;
 			break;
-		}
-		auto t2 = std::chrono::steady_clock::now();		
+		}			
 
         ret = avcodec_receive_frame(m_avContext, m_avFrame);
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF){
@@ -48,11 +47,10 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 			break;
         }
 
-		auto t3 = std::chrono::steady_clock::now();	
+		auto t2 = std::chrono::steady_clock::now();		
 
-		DebugOut((L"Dec send=%f ms rec=%f ms\n"),
-			std::chrono::duration <double, std::milli> (t2-t1).count(),
-			std::chrono::duration <double, std::milli> (t3-t2).count());
+		/*DebugOut((L"%f\n"),
+			std::chrono::duration <double, std::milli> (t2-t1).count());*/
 
 	}
 	while (false);
@@ -60,29 +58,45 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 	if(bRet == true)
 	{
 #ifndef USE_BUFFER2
-		if(m_avFrame->format == AV_PIX_FMT_YUV420P ||
-			m_avFrame->format == AV_PIX_FMT_YUVJ420P){
-			DWORD height = m_avFrame->height;
-			DWORD yStride = m_avFrame->width;
-			DWORD uvStride =  m_avFrame->width / 2;
-			BYTE* pY = m_avFrame->data[0];
-			BYTE* pV = m_avFrame->data[2];
-			BYTE* pU = m_avFrame->data[1];
-			DWORD uvHeight = height / 2;
-			LONG uvPitch = pitch / 2;
+		DWORD height = m_avFrame->height;
+		DWORD yStride = m_avFrame->width;
+		DWORD uvStride =  m_avFrame->width / 2;
+		BYTE* pY = m_avFrame->data[0];
+		BYTE* pV = m_avFrame->data[1];
+		BYTE* pU = m_avFrame->data[2];
+		DWORD uvHeight = height / 2;
+		LONG uvPitch = pitch / 2;
 
-			for (DWORD row = 0; row < height; row++)
-				memcpy((BYTE*)out + row * pitch, &pY[row * yStride], yStride);
+		for (DWORD row = 0; row < height; row++)
+			memcpy((BYTE*)out + row * pitch, &pY[row * yStride], yStride);		
 
-			BYTE* pVBuffer = (BYTE*)out + height * pitch;
+		if(FCC('NV12') == m_dwPixelFmt)
+		{
+			BYTE* pUVBuffer = (BYTE*)out + height * pitch;
 
-			for (DWORD row = 0; row < uvHeight; row++)
-				memcpy(pVBuffer + row * uvPitch, &pV[row * uvStride], uvStride);
+			for (DWORD row = 0; row < uvHeight; row++){
+				for(int col = 0; col < m_avFrame->linesize[1]; col++){
 
-			BYTE* pUBuffer = pVBuffer + height * pitch / 4;
-
+					pUVBuffer[row * pitch + col*2] = pV[row * uvStride + col];
+					pUVBuffer[row * pitch + col*2 + 1] = pU[row * uvStride + col];
+				}
+			}
+		}
+		else if(FCC('YV12') == m_dwPixelFmt)
+		{
+			BYTE* pUBuffer = (BYTE*)out + height * pitch;
+			
 			for (DWORD row = 0; row < uvHeight; row++)
 				memcpy(pUBuffer + row * uvPitch, &pU[row * uvStride], uvStride);
+			
+			BYTE* pVBuffer = pUBuffer + height * pitch / 4;
+			
+			for (DWORD row = 0; row < uvHeight; row++)
+				memcpy(pVBuffer + row * uvPitch, &pV[row * uvStride], uvStride);
+		}
+		else
+		{
+			//error
 		}
 #endif
 	}

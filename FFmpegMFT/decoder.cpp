@@ -23,9 +23,9 @@ bool Decoder::setDecoderStrategy(IDecoderStrategy* strategy)
 	return m_decoderS != NULL ? true : false;
 }
 
-bool Decoder::init(std::string codecName)
+bool Decoder::init(std::string codecName, DWORD pixel_format)
 {
-	return m_decoderS != NULL ?  m_decoderS->init(codecName) : false;
+	return m_decoderS != NULL ?  m_decoderS->init(codecName, pixel_format) : false;
 }
 
 bool Decoder::release()

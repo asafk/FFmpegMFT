@@ -7,7 +7,7 @@ public:
 	IDecoderStrategy(){};
 	virtual ~IDecoderStrategy(){};
 
-	virtual bool init(std::string codecName) = 0;
+	virtual bool init(std::string codecName, DWORD pixel_format) = 0;
 	virtual bool release() = 0;	
 
 	virtual bool decode(unsigned char*, int, void*&, int) = 0;

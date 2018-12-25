@@ -10,7 +10,7 @@ hw_decoder_impl::~hw_decoder_impl()
 {
 }
 
-bool hw_decoder_impl::init(std::string codecName)
+bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 {
 	bool bRet = true;
 

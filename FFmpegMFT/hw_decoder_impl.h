@@ -14,7 +14,7 @@ public:
 	hw_decoder_impl();
 	~hw_decoder_impl();
 
-	bool init(std::string codecName);
+	bool init(std::string codecName, DWORD pixel_format);
 	bool release();	
 
 	bool decode(unsigned char* in, int in_size, void*& surface, int none);

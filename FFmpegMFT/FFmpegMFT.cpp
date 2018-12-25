@@ -800,19 +800,22 @@ HRESULT FFmpegMFT::ProcessMessage(
 		case MFT_MESSAGE_NOTIFY_BEGIN_STREAMING:
 		case MFT_MESSAGE_NOTIFY_START_OF_STREAM:
 			// Extract the subtype to make sure that the subtype is one that we support
-		    GUID subtype;
-		    hr = m_pInputType->GetGUID(MF_MT_SUBTYPE, &subtype);
+		    GUID subtype_in, subtype_out;
+		    hr = m_pInputType->GetGUID(MF_MT_SUBTYPE, &subtype_in);
+		    BREAK_ON_FAIL(hr);
+
+			hr = m_pOutputType->GetGUID(MF_MT_SUBTYPE, &subtype_out);
 		    BREAK_ON_FAIL(hr);
 
 		    // verify that the specified media type has one of the acceptable subtypes -
 		    // this filter will accept only H.264/HEVC compressed subtypes.
-		    if(InlineIsEqualGUID(subtype, MFVideoFormat_H264) == TRUE)
+		    if(InlineIsEqualGUID(subtype_in, MFVideoFormat_H264) == TRUE)
 		    {
-			    m_decoder.init("H264");
+			    m_decoder.init("H264", subtype_out.Data1);
 		    }
-			else if(InlineIsEqualGUID(subtype,MFVideoFormat_H265) == TRUE || InlineIsEqualGUID(subtype,MFVideoFormat_HEVC) == TRUE )
+			else if(InlineIsEqualGUID(subtype_in,MFVideoFormat_H265) == TRUE || InlineIsEqualGUID(subtype_in,MFVideoFormat_HEVC) == TRUE )
 			{
-				m_decoder.init("HEVC");
+				m_decoder.init("HEVC", subtype_out.Data1);
 			}
 			m_sampleTime = 0;
 		break;
@@ -929,7 +932,11 @@ HRESULT FFmpegMFT::ProcessOutput(
 			BREAK_ON_FAIL(hr);
 
 			///do the decoding
+			auto t1 = std::chrono::steady_clock::now();
 			hr = decode(pInputMediaBuffer,pOutputMediaBuffer);
+			auto t2 = std::chrono::steady_clock::now();
+			DebugOut((L"%f\n"),
+			std::chrono::duration <double, std::milli> (t2-t1).count());
 			BREAK_ON_FAIL(hr);
 		}else{
 			//hr = m_p3DDeviceManager->TestDevice(m_h3dDevice);
@@ -994,7 +1001,7 @@ HRESULT FFmpegMFT::ProcessOutput(
 
 		m_pSample.Release();
 
-		DebugOut((L"sampleTime %I64d (%I64d) sampleDuration %I64d\n"),sampleTime, m_sampleTime, sampleDuration);
+		//DebugOut((L"sampleTime %I64d (%I64d) sampleDuration %I64d\n"),sampleTime, m_sampleTime, sampleDuration);
 
         // Set status flags for output
         pOutputSampleBuffer[0].dwStatus = 0;
@@ -1119,17 +1126,12 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
         BREAK_ON_FAIL(hr);
 
         // set the subtype of the video type by index.  The indexes of the media types
-        // that are supported by this filter are:  0 - UYVY, 1 - NV12
-      /* if(dwTypeIndex == 0)
-        {
-            hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_UYVY);
-        }*/
-    ///*    else*/
-    /*	if(dwTypeIndex == 0)
+        // that are supported by this filter are:  1 - YV12, 0 - NV12
+    	if(dwTypeIndex == 0)
         {
             hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_NV12);
-        } */
-		if(dwTypeIndex == 0)
+        } 
+		else if(dwTypeIndex == 1)
         {
             hr = pmt->SetGUID(MF_MT_SUBTYPE, MEDIASUBTYPE_YV12);
         }
@@ -1200,8 +1202,8 @@ HRESULT FFmpegMFT::CheckOutputMediaType(IMFMediaType* pmt)
         BREAK_ON_FAIL(hr);
 
         // verify that the specified media type has one of the acceptable subtypes -
-        // this filter will accept only NV12 and UYVY uncompressed subtypes.
-        if(subtype != MEDIASUBTYPE_NV12 && subtype != MEDIASUBTYPE_UYVY && subtype != MEDIASUBTYPE_YV12)
+        // this filter will accept only NV12 and YV12 uncompressed subtypes.
+        if(subtype != MEDIASUBTYPE_NV12 && subtype != MEDIASUBTYPE_YV12)
         {
             hr = MF_E_INVALIDMEDIATYPE;
             break;
