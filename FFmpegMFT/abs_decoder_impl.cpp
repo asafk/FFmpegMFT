@@ -7,7 +7,6 @@ m_avCodec(NULL),
 m_avContext(NULL),
 m_avFrame(NULL),
 m_avPkt(NULL),
-m_bInit(false),
 m_dwPixelFmt(0)
 {
 }
@@ -20,19 +19,9 @@ abs_decoder_impl::~abs_decoder_impl()
 bool abs_decoder_impl::init(std::string codecName, DWORD pixel_format)
 {
 	bool bRet = true;
-
-	//validation
-	if(m_bInit)
-		return bRet;
 	
 	do
 	{
-		m_avPkt = av_packet_alloc();
-		if (m_avPkt == NULL){
-			bRet = false;
-			break;
-		}
-
 		/* find the video decoder according to codecName*/
 		/* currently support only HEVC or H.264*/
 		if(codecName.compare("HEVC") == 0)
@@ -57,6 +46,12 @@ bool abs_decoder_impl::init(std::string codecName, DWORD pixel_format)
 			break;
 	    }
 
+		m_avPkt = av_packet_alloc();
+		if (m_avPkt == NULL){
+			bRet = false;
+			break;
+		}
+
 		m_avFrame = av_frame_alloc();
 		if (m_avFrame == NULL) {
 			bRet = false;
@@ -67,14 +62,11 @@ bool abs_decoder_impl::init(std::string codecName, DWORD pixel_format)
 	}
 	while (false);        
 
-	return m_bInit = bRet;
+	return bRet;
 }
 
 bool abs_decoder_impl::release()
 {
-	if(!m_bInit)
-		return true;
-
 	flush();
 
 	if(m_avContext != NULL) {
@@ -92,7 +84,7 @@ bool abs_decoder_impl::release()
 		m_avPkt = NULL;
 	}
 
-	return m_bInit = false;
+	return true;
 }
 
 void abs_decoder_impl::flush()

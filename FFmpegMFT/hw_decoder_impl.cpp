@@ -14,20 +14,8 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 {
 	bool bRet = true;
 
-	//validation
-	if(m_bInit)
-		return bRet;
-
 	do
 	{
-		m_avPkt = av_packet_alloc();
-		if (m_avPkt == NULL){
-			bRet = false;
-			break;
-		}
-
-		int i;
-
 		m_type = av_hwdevice_find_type_by_name("dxva2"); //dxva2 failed
 	    if (m_type == AV_HWDEVICE_TYPE_NONE) {
 	        fprintf(stderr, "Device type %s is not supported.\n", "d3d11va");
@@ -51,7 +39,7 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 			break;
 	    }
 
-		for (i = 0;; i++) {
+		for (int i = 0;; i++) {
 	        const AVCodecHWConfig *config = avcodec_get_hw_config(m_avCodec, i);
 	        if (!config) {
 	            fprintf(stderr, "Decoder %s does not support device type %s.\n",
@@ -92,6 +80,12 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 	    	break;
 		}
 
+		m_avPkt = av_packet_alloc();
+		if (m_avPkt == NULL){
+			bRet = false;
+			break;
+		}
+
 		m_avFrame = av_frame_alloc();
 		if (m_avFrame == NULL) {
 			bRet = false;
@@ -106,9 +100,6 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 
 bool hw_decoder_impl::release()
 {
-	if(!m_bInit)
-		return true;
-
 	if(m_hw_device_ctx != NULL){
 		av_buffer_unref(&m_hw_device_ctx);
 		m_hw_device_ctx = NULL;

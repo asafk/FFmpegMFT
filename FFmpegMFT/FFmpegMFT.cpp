@@ -566,6 +566,18 @@ HRESULT FFmpegMFT::SetOutputType(
         if (dwFlags != MFT_SET_TYPE_TEST_ONLY)
         {
             m_pOutputType = pType;
+			/*
+			//Add few parameters for the output
+			UINT32 framerate_n, framerate_d;
+			hr = MFGetAttributeRatio(m_pInputType, MF_MT_FRAME_RATE, &framerate_n, &framerate_d);
+			BREAK_ON_FAIL(hr);
+
+			hr = MFSetAttributeRatio(m_pOutputType, MF_MT_FRAME_RATE, framerate_n, framerate_d);
+			BREAK_ON_FAIL(hr);
+
+			hr = MFSetAttributeRatio(m_pOutputType, MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
+			BREAK_ON_FAIL(hr);
+			*/
         }
     }
     while(false);
@@ -807,6 +819,8 @@ HRESULT FFmpegMFT::ProcessMessage(
 			hr = m_pOutputType->GetGUID(MF_MT_SUBTYPE, &subtype_out);
 		    BREAK_ON_FAIL(hr);
 
+			//Release the old decoder
+			m_decoder.release();
 		    // verify that the specified media type has one of the acceptable subtypes -
 		    // this filter will accept only H.264/HEVC compressed subtypes.
 		    if(InlineIsEqualGUID(subtype_in, MFVideoFormat_H264) == TRUE)
@@ -822,9 +836,6 @@ HRESULT FFmpegMFT::ProcessMessage(
 
 		case MFT_MESSAGE_NOTIFY_END_STREAMING:
 		case MFT_MESSAGE_NOTIFY_END_OF_STREAM:
-			m_decoder.release();
-		break;
-
 		default:
 		break;
 	}
@@ -992,7 +1003,11 @@ HRESULT FFmpegMFT::ProcessOutput(
 		BREAK_ON_FAIL(hr);
 		LONGLONG sampleDuration;
 		hr = m_pSample->GetSampleDuration(&sampleDuration);
-		BREAK_ON_FAIL(hr);
+		if(hr == MF_E_NO_SAMPLE_DURATION)
+		{
+			sampleDuration = 400000;
+		}
+		else { BREAK_ON_FAIL(hr); }		
 		
 		hr = outputSample->SetSampleTime(m_sampleTime);
 		BREAK_ON_FAIL(hr);

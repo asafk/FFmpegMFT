@@ -25,7 +25,6 @@ protected:
 	AVFrame *m_avFrame;
 	AVPacket *m_avPkt;
 
-	bool m_bInit;
 	DWORD m_dwPixelFmt;
 };
 
