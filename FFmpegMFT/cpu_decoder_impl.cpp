@@ -57,7 +57,8 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 
 	if(bRet == true)
 	{
-#ifndef USE_BUFFER2
+#ifdef USE_BUFFER2
+#else
 		DWORD height = m_avFrame->height;
 		DWORD yStride = m_avFrame->width;
 		DWORD uvStride =  m_avFrame->width / 2;

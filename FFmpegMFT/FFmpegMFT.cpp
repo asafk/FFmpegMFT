@@ -928,6 +928,9 @@ HRESULT FFmpegMFT::ProcessOutput(
         // input is needed.
         BREAK_ON_NULL(m_pSample, MF_E_TRANSFORM_NEED_MORE_INPUT);
 
+		//start count the time consuming to decode
+		auto t1 = std::chrono::steady_clock::now();
+
 		//input to buffer
 		CComPtr<IMFMediaBuffer> pInputMediaBuffer;
 		hr = m_pSample->ConvertToContiguousBuffer(&pInputMediaBuffer);
@@ -943,11 +946,7 @@ HRESULT FFmpegMFT::ProcessOutput(
 			BREAK_ON_FAIL(hr);
 
 			///do the decoding
-			auto t1 = std::chrono::steady_clock::now();
 			hr = decode(pInputMediaBuffer,pOutputMediaBuffer);
-			auto t2 = std::chrono::steady_clock::now();
-			DebugOut((L"%f\n"),
-			std::chrono::duration <double, std::milli> (t2-t1).count());
 			BREAK_ON_FAIL(hr);
 		}else{
 			//hr = m_p3DDeviceManager->TestDevice(m_h3dDevice);
@@ -996,27 +995,49 @@ HRESULT FFmpegMFT::ProcessOutput(
 			///do the decoding
 			hr = decode(pInputMediaBuffer,pOutputMediaBuffer);
 			BREAK_ON_FAIL(hr);
-		}	
+		}
 
+		//ends counting the decoding process
+		auto t2 = std::chrono::steady_clock::now();
+
+	    const LONGLONG duration100Nano = (LONGLONG)floor(std::chrono::duration <double, std::nano> (t2-t1).count() / 100);
+		
 		LONGLONG sampleTime;
 		hr = m_pSample->GetSampleTime(&sampleTime);
 		BREAK_ON_FAIL(hr);
+
 		LONGLONG sampleDuration;
 		hr = m_pSample->GetSampleDuration(&sampleDuration);
-		if(hr == MF_E_NO_SAMPLE_DURATION)
-		{
-			sampleDuration = 400000;
+		if(hr == MF_E_NO_SAMPLE_DURATION){
+			//Find fps from the input type
+			UINT32 framerate_n, framerate_d;
+			hr = MFGetAttributeRatio(m_pInputType, MF_MT_FRAME_RATE, &framerate_n, &framerate_d);
+			BREAK_ON_FAIL(hr);
+
+			if(framerate_n != 0 && framerate_d != 0)
+				sampleDuration = (LONGLONG)floor(((double)framerate_d / framerate_n) * 10000000);
+			else
+				sampleDuration = sampleTime - m_sampleTime; //default
+
+		} else if(FAILED(hr)){
+			BREAK_ON_FAIL(hr);
+		} else {
+			
+			//set out sample duration
+			hr = outputSample->SetSampleDuration(sampleDuration);
+			BREAK_ON_FAIL(hr);
+			sampleDuration = max(sampleDuration,duration100Nano);
 		}
-		else { BREAK_ON_FAIL(hr); }		
-		
+	
+		//set output sample time
 		hr = outputSample->SetSampleTime(m_sampleTime);
-		BREAK_ON_FAIL(hr);
+		BREAK_ON_FAIL(hr);			
 		
-		m_sampleTime += sampleDuration;
+    	DebugOut((L"S.t %10I64d S.d %10I64d t %10I64d d %10I64d\n"),sampleTime, sampleDuration, m_sampleTime, duration100Nano);
+		
+    	m_sampleTime += sampleDuration;
 
-		m_pSample.Release();
-
-		//DebugOut((L"sampleTime %I64d (%I64d) sampleDuration %I64d\n"),sampleTime, m_sampleTime, sampleDuration);
+		m_pSample.Release();		
 
         // Set status flags for output
         pOutputSampleBuffer[0].dwStatus = 0;
@@ -1067,7 +1088,7 @@ HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOut
 
 	hr = inputMediaBuffer->Unlock();
 
-	//return bret ? hr : MF_E_UNEXPECTED;
+	//return bret ? hr : MF_E_TRANSFORM_NEED_MORE_INPUT;
 	return hr;
 }
 
