@@ -1119,7 +1119,7 @@ HRESULT FFmpegMFT::GetSupportedInputMediaType(
         }
 		else if(dwTypeIndex == 1) //HEVC
         {
-            hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H265); //MFVideoFormat_HEVC
+            hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_HEVC); // MFVideoFormat_H265 from win SDK 10.X and up, now we will support 8.1 SDK
         }
         else 
         { 
