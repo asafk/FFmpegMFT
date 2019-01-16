@@ -825,12 +825,14 @@ HRESULT FFmpegMFT::ProcessMessage(
 		    // this filter will accept only H.264/HEVC compressed subtypes.
 		    if(InlineIsEqualGUID(subtype_in, MFVideoFormat_H264) == TRUE)
 		    {
-			    m_decoder.init("H264", subtype_out.Data1);
+			    hr = m_decoder.init("H264", subtype_out.Data1) != true? S_FALSE : S_OK;
 		    }
 			else if(InlineIsEqualGUID(subtype_in,MFVideoFormat_H265) == TRUE || InlineIsEqualGUID(subtype_in,MFVideoFormat_HEVC) == TRUE )
 			{
-				m_decoder.init("HEVC", subtype_out.Data1);
+				hr = m_decoder.init("HEVC", subtype_out.Data1) != true? S_FALSE : S_OK;
 			}
+
+			BREAK_ON_FAIL(hr);
 			m_sampleTime = 0;
 		break;
 

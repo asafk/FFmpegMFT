@@ -12,6 +12,8 @@ hw_decoder_impl::~hw_decoder_impl()
 
 bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 {
+	// now it's close due to mismatch with FFmpeg Binaries, not run with the latest
+	return false;
 	bool bRet = true;
 
 	do
@@ -39,7 +41,8 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 			break;
 	    }
 
-		for (int i = 0;; i++) {
+		// now it's close due to mismatch with FFmpeg Binaries, not run with the latest
+		/*for (int i = 0;; i++) {
 	        const AVCodecHWConfig *config = avcodec_get_hw_config(m_avCodec, i);
 	        if (!config) {
 	            fprintf(stderr, "Decoder %s does not support device type %s.\n",
@@ -52,7 +55,7 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 	            m_hw_pix_fmt = config->pix_fmt;
 	            break;
 	        }
-		}
+		}*/
 
 		if(bRet == false)
 			break;
@@ -100,6 +103,9 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 
 bool hw_decoder_impl::release()
 {
+	// now it's close due to mismatch with FFmpeg Binaries, not run with the latest
+	return false;
+
 	if(m_hw_device_ctx != NULL){
 		av_buffer_unref(&m_hw_device_ctx);
 		m_hw_device_ctx = NULL;
@@ -110,6 +116,9 @@ bool hw_decoder_impl::release()
 
 bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int none)
 {
+	// now it's close due to mismatch with FFmpeg Binaries, not run with the latest
+	return false;
+
 	bool bRet = false;
 	AVFrame *frame = NULL;
     int ret = 0;

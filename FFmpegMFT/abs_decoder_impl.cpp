@@ -84,6 +84,8 @@ bool abs_decoder_impl::release()
 		m_avPkt = NULL;
 	}
 
+	m_avCodec = NULL;
+
 	return true;
 }
 
