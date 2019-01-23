@@ -90,14 +90,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;FFMPEGMFT_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(OutDir)\..\ffmpeg_Zvi\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(OutDir)..\ffmpeg_Zvi\include;$(OutDir)..\log4cplus-1.2.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>mfuuid.lib;strmiids.lib;mfplat.lib;mf.lib;evr.lib;shlwapi.lib;avcodec.lib;avformat.lib;avutil.lib;avdevice.lib;avfilter.lib;swresample.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>mfuuid.lib;strmiids.lib;mfplat.lib;mf.lib;evr.lib;shlwapi.lib;avcodec.lib;avformat.lib;avutil.lib;avdevice.lib;avfilter.lib;swresample.lib;swscale.lib;log4cplusSUD.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>$(TargetName).def</ModuleDefinitionFile>
-      <AdditionalLibraryDirectories>$(OutDir)\..\ffmpeg_Zvi\build32\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OutDir)..\ffmpeg_Zvi\build32\lib;$(OutDir)..\log4cplus-1.2.1\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>regsvr32 $(TargetPath) /u /s
@@ -128,16 +128,16 @@ regsvr32 $(TargetPath) /s</Command>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;FFMPEGMFT_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(OutDir)\..\ffmpeg_Zvi\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(OutDir)..\ffmpeg_Zvi\include;$(OutDir)..\log4cplus-1.2.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>mfuuid.lib;strmiids.lib;mfplat.lib;mf.lib;evr.lib;shlwapi.lib;avcodec.lib;avformat.lib;avutil.lib;avdevice.lib;avfilter.lib;swresample.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>mfuuid.lib;strmiids.lib;mfplat.lib;mf.lib;evr.lib;shlwapi.lib;avcodec.lib;avformat.lib;avutil.lib;avdevice.lib;avfilter.lib;swresample.lib;swscale.lib;log4cplusSU.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>$(TargetName).def</ModuleDefinitionFile>
-      <AdditionalLibraryDirectories>$(OutDir)\..\ffmpeg_Zvi\build32\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OutDir)..\ffmpeg_Zvi\build32\lib;$(OutDir)..\log4cplus-1.2.1\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>regsvr32 $(TargetPath) /u /s
@@ -170,6 +170,7 @@ regsvr32 $(TargetPath) /s</Command>
     <ClInclude Include="FFmpegMFT.h" />
     <ClInclude Include="hw_decoder_impl.h" />
     <ClInclude Include="IDecoderStrategy.h" />
+    <ClInclude Include="GeneralLogger.h" />
     <ClInclude Include="MFTClassFactory.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="stdafx.h" />
@@ -183,6 +184,7 @@ regsvr32 $(TargetPath) /s</Command>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="FFmpegMFT.cpp" />
     <ClCompile Include="hw_decoder_impl.cpp" />
+    <ClCompile Include="GeneralLogger.cpp" />
     <ClCompile Include="MFTClassFactory.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

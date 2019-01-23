@@ -9,6 +9,8 @@
 #include "CBufferLock.h"
 #include "Utils.h"
 
+#include "GeneralLogger.h"
+
 FFmpegMFT::FFmpegMFT(void) :
     m_cRef(1),
 	m_sampleTime(0),
@@ -17,6 +19,7 @@ FFmpegMFT::FFmpegMFT(void) :
 	m_pRenderTargetFormats(NULL)*/
 {
 	//OutputDebugString(_T("\n\nFFmpegMFT\n\n"));
+	GeneralLogger log;
 }
 
 FFmpegMFT::~FFmpegMFT(void)
