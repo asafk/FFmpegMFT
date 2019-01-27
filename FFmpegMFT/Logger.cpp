@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "Logger.h"
 
-
 #include <log4cpp/Category.hh>
 #include <log4cpp/PropertyConfigurator.hh>
 
@@ -16,9 +15,9 @@ Logger::Logger()
 	}
 	catch (log4cpp::ConfigureFailure& logExc)
 	{
+		//Log config not found, not using logging facilities
 	}
 }
-
 
 Logger::~Logger()
 {
