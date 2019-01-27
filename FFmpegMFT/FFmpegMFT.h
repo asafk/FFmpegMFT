@@ -6,7 +6,6 @@
 #include "decoder.h"
 #include "cpu_decoder_impl.h"
 #include "hw_decoder_impl.h"
-#include "Logger.h"
 
 #include <d3d9.h>
 #include <dxva2api.h>
@@ -100,8 +99,5 @@ class FFmpegMFT :  public IMFTransform
 		//FFmpeg decoding
 		HRESULT decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOutputMediaBuffer);
 		Decoder m_decoder;
-
-		//Logging
-		Logger m_logger;
 };
 

@@ -5,9 +5,20 @@ using namespace std;
 
 class Logger
 {
-public:
+private:
 	Logger();
+
+public:	
 	~Logger();
+
+	static Logger& getInstance()
+	{
+		//"Meyers Singleton"
+		//https://stackoverflow.com/a/43524389/3719543
+
+		static Logger instance;
+		return instance;
+	}
 
 	void LogDebug(string strDebug);
 	void LogInfo(string strInfo);
