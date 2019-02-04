@@ -12,15 +12,13 @@ hw_decoder_impl::~hw_decoder_impl()
 
 bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 {
-	// now it's close due to mismatch with FFmpeg Binaries, not run with the latest
-	return false;
 	bool bRet = true;
 
 	do
 	{
-		m_type = av_hwdevice_find_type_by_name("dxva2"); //dxva2 failed
+		m_type = av_hwdevice_find_type_by_name("dxva2");
 	    if (m_type == AV_HWDEVICE_TYPE_NONE) {
-	        fprintf(stderr, "Device type %s is not supported.\n", "d3d11va");
+	        fprintf(stderr, "Device type %s is not supported.\n", "dxva2");
 	        fprintf(stderr, "Available device types:");
 	        while((m_type = av_hwdevice_iterate_types(m_type)) != AV_HWDEVICE_TYPE_NONE)
 	            fprintf(stderr, " %s", av_hwdevice_get_type_name(m_type));
@@ -41,8 +39,7 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 			break;
 	    }
 
-		// now it's close due to mismatch with FFmpeg Binaries, not run with the latest
-		/*for (int i = 0;; i++) {
+		for (int i = 0;; i++) {
 	        const AVCodecHWConfig *config = avcodec_get_hw_config(m_avCodec, i);
 	        if (!config) {
 	            fprintf(stderr, "Decoder %s does not support device type %s.\n",
@@ -55,7 +52,7 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 	            m_hw_pix_fmt = config->pix_fmt;
 	            break;
 	        }
-		}*/
+		}
 
 		if(bRet == false)
 			break;
@@ -103,9 +100,6 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 
 bool hw_decoder_impl::release()
 {
-	// now it's close due to mismatch with FFmpeg Binaries, not run with the latest
-	return false;
-
 	if(m_hw_device_ctx != NULL){
 		av_buffer_unref(&m_hw_device_ctx);
 		m_hw_device_ctx = NULL;
@@ -116,9 +110,6 @@ bool hw_decoder_impl::release()
 
 bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int none)
 {
-	// now it's close due to mismatch with FFmpeg Binaries, not run with the latest
-	return false;
-
 	bool bRet = false;
 	AVFrame *frame = NULL;
     int ret = 0;

@@ -9,7 +9,6 @@ m_avFrame(NULL),
 m_avPkt(NULL),
 m_dwPixelFmt(0)
 {
-	avcodec_register_all();
 }
 
 abs_decoder_impl::~abs_decoder_impl()
