@@ -241,19 +241,16 @@ HRESULT FFmpegMFT::GetOutputStreamInfo(
 
         //   - only on HW - The MFT provides samples and there is no need to give it output samples to 
         //     fill in during its ProcessOutput() calls.
-		if(m_p3DDeviceManager == NULL){
-	        pStreamInfo->dwFlags =
+		pStreamInfo->dwFlags =
 	            MFT_OUTPUT_STREAM_WHOLE_SAMPLES |                
 	            MFT_OUTPUT_STREAM_SINGLE_SAMPLE_PER_BUFFER |
 				MFT_OUTPUT_STREAM_FIXED_SAMPLE_SIZE;
-		}
-		else{
-			pStreamInfo->dwFlags =
-	            MFT_OUTPUT_STREAM_WHOLE_SAMPLES |                
-	            MFT_OUTPUT_STREAM_SINGLE_SAMPLE_PER_BUFFER |
-				MFT_OUTPUT_STREAM_FIXED_SAMPLE_SIZE |
+
+		if(m_p3DDeviceManager != NULL)
+		{
+	        pStreamInfo->dwFlags |= 
 	            MFT_OUTPUT_STREAM_PROVIDES_SAMPLES ;
-		}
+		}		
 
         // the cbAlignment variable contains information about byte alignment of the sample 
         // buffers, if one is needed.  Zero indicates that no specific alignment is needed.
@@ -778,7 +775,7 @@ HRESULT FFmpegMFT::ProcessMessage(
 					HRESULT hr = m_p3DDeviceManager->CloseDeviceHandle(m_h3dDevice);
 					if(FAILED(hr))
 					{
-						//log
+						Logger::getInstance().LogWarn("ProcessMessage - MFT_MESSAGE_SET_D3D_MANAGER - failed to close device handle");
 					}
 					m_h3dDevice = NULL;
 				}

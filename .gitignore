@@ -2,15 +2,7 @@
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
-/Release
-/Debug
-/.vs/FFmpegMFT/v15
-/FFmpegMFT/Debug
-/FFmpegMFT/Release
-/ffmpeg/build32
-/ffmpeg
-/ffmpeg_Zvi
-/ffmpeg_Zelig
-/log4cplus-1.2.1
-/log4cpp-1.1.3/log4cpp
-/FFmpegMFT/GeneralLogger.log
+
+/*
+!/FFmpegMFT/*
+
