@@ -186,7 +186,6 @@ regsvr32 $(TargetPath) /s</Command>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="FFmpegMFT.cpp" />
     <ClCompile Include="hw_decoder_impl.cpp" />
-    <ClCompile Include="Logger.cpp" />
     <ClCompile Include="MFTClassFactory.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
