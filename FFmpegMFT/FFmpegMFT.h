@@ -98,6 +98,7 @@ class FFmpegMFT :  public IMFTransform
 
 		//FFmpeg decoding
 		HRESULT decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOutputMediaBuffer);
+		HRESULT decode(IMFMediaBuffer* inputMediaBuffer, IDirect3DSurface9** ppSurface);
 		Decoder m_decoder;
 };
 

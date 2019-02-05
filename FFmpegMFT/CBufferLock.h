@@ -69,12 +69,15 @@ done:
 class CBufferLock
 {
 public:
-    CBufferLock(IMFMediaBuffer *pBuffer) : m_p2DBuffer(NULL), m_bLocked(FALSE)
+    CBufferLock(IMFMediaBuffer *pBuffer) : m_pBuffer(NULL), m_p2DBuffer(NULL), m_bLocked(FALSE)
     {
-        m_pBuffer = pBuffer;
-        m_pBuffer->AddRef();
+		if(pBuffer)
+		{
+	        m_pBuffer = pBuffer;
+	        m_pBuffer->AddRef();
 
-        m_pBuffer->QueryInterface(IID_IMF2DBuffer, (void**)&m_p2DBuffer);
+	        m_pBuffer->QueryInterface(IID_IMF2DBuffer, (void**)&m_p2DBuffer);
+		}
     }
 
     ~CBufferLock()
@@ -98,7 +101,7 @@ public:
         {
             hr = m_p2DBuffer->Lock2D(ppbScanLine0, plStride);
         }
-        else
+        else if(m_pBuffer)
         {
             // Use non-2D version.
             BYTE *pData = NULL;
@@ -121,6 +124,10 @@ public:
                 }
             }
         }
+		else
+		{
+			return S_FALSE;
+		}
 
         m_bLocked = (SUCCEEDED(hr));
 

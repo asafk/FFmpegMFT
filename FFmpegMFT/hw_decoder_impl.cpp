@@ -2,8 +2,12 @@
 #include "hw_decoder_impl.h"
 
 
-hw_decoder_impl::hw_decoder_impl()
+hw_decoder_impl::hw_decoder_impl(): 
+m_type(AV_HWDEVICE_TYPE_NONE),
+m_hw_device_ctx(NULL),
+m_hw_pix_fmt(AV_PIX_FMT_NONE)
 {
+	Logger::getInstance().LogInfo("Created HW decoder");
 }
 
 hw_decoder_impl::~hw_decoder_impl()
@@ -18,11 +22,11 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 	{
 		m_type = av_hwdevice_find_type_by_name("dxva2");
 	    if (m_type == AV_HWDEVICE_TYPE_NONE) {
-	        fprintf(stderr, "Device type %s is not supported.\n", "dxva2");
-	        fprintf(stderr, "Available device types:");
+	        Logger::getInstance().LogWarn("Device type %s is not supported.", "dxva2");
+	        Logger::getInstance().LogInfo("Available device types:");
 	        while((m_type = av_hwdevice_iterate_types(m_type)) != AV_HWDEVICE_TYPE_NONE)
-	            fprintf(stderr, " %s", av_hwdevice_get_type_name(m_type));
-	        fprintf(stderr, "\n");
+	            Logger::getInstance().LogInfo(" %s", av_hwdevice_get_type_name(m_type));
+
 			bRet = false;
 	        break;
 	    }
@@ -42,7 +46,7 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 		for (int i = 0;; i++) {
 	        const AVCodecHWConfig *config = avcodec_get_hw_config(m_avCodec, i);
 	        if (!config) {
-	            fprintf(stderr, "Decoder %s does not support device type %s.\n",
+	            Logger::getInstance().LogWarn("Decoder %s does not support device type %s.",
 	                    m_avCodec->name, av_hwdevice_get_type_name(m_type));
 	            bRet = false;
 	        	break;
@@ -58,24 +62,25 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 			break;
 
 		if (!(m_avContext = avcodec_alloc_context3(m_avCodec))){
-			 bRet = false;
-			 break;
+			Logger::getInstance().LogWarn("Failed to create context for Decoder %s.",m_avCodec->name);
+			bRet = false;
+			break;
 		}
 
 		m_avContext->opaque = this;
 		m_avContext->get_format = get_hw_format;
-		m_avContext->get_buffer2 = get_buffer;
+		//m_avContext->get_buffer2 = get_buffer;
 
 	    if ((av_hwdevice_ctx_create(&m_hw_device_ctx, m_type,
 	                                      NULL, NULL, 0)) < 0) {
-	    	fprintf(stderr, "Failed to create specified HW device.\n");
+	    	Logger::getInstance().LogWarn("Failed to create specified HW device.");
 	    	bRet = false;
 	    	break;
 	    }
 	    m_avContext->hw_device_ctx = av_buffer_ref(m_hw_device_ctx);
 
 		if ((avcodec_open2(m_avContext, m_avCodec, NULL)) < 0) {
-	        fprintf(stderr, "Failed to open codec for stream \n");
+	        Logger::getInstance().LogWarn("Failed to open codec for stream.");
 			bRet = false;
 	    	break;
 		}
@@ -110,7 +115,7 @@ bool hw_decoder_impl::release()
 
 bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int none)
 {
-	bool bRet = false;
+	bool bRet = true;
 	AVFrame *frame = NULL;
     int ret = 0;
 
@@ -118,10 +123,10 @@ bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int
 	{
 		m_avPkt->data = in;
 		m_avPkt->size = in_size;
-		m_surface = (LPDIRECT3DSURFACE9)surface;
 
 		ret = avcodec_send_packet(m_avContext, m_avPkt);
 		if (ret < 0) {
+			Logger::getInstance().LogWarn("Error during decoding (avcodec_send_packet)");
 			bRet = false;
 			break;
 		}
@@ -132,9 +137,21 @@ bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int
             break;
 		}
         else if (ret < 0) {
+			Logger::getInstance().LogWarn("Error while decoding (avcodec_receive_frame)");
             bRet = false;
 			break;
         }
+
+		 if (m_avFrame->format != m_hw_pix_fmt) {
+			/*frame = av_frame_alloc();
+			av_hwframe_transfer_data(frame, m_avFrame, 0);
+		 	av_frame_free(&frame);*/
+            Logger::getInstance().LogWarn("Decoded frame is SW instead of HW!");
+		 	bRet = false;
+			break;
+		 }
+
+		surface = m_avFrame->data[3];
 	}
 	while (false);
 
@@ -158,26 +175,4 @@ AVPixelFormat hw_decoder_impl::get_hw_format_internal(AVCodecContext* ctx, const
     
 	/* Fallback to default behaviour */
     return avcodec_default_get_format( ctx, pix_fmts );
-}
-
-int hw_decoder_impl::get_buffer(struct AVCodecContext *c, AVFrame *frame, int flags)
-{
-	hw_decoder_impl* this_pointer = static_cast<hw_decoder_impl*>(c->opaque);
-    return this_pointer->get_buffer_internal(c, frame, flags);
-}
-
-int hw_decoder_impl::get_buffer_internal(struct AVCodecContext *c, AVFrame *pic, int flags)
-{
-	 /* */
-    for (int i = 0; i < 4; i++) {
-        pic->data[i] = NULL;
-        pic->linesize[i] = 0;
-
-        if (i == 0 || i == 3)
-            pic->data[i] = (uint8_t *)m_surface;/* Yummie */
-    }
-
-	return 1;
-	/* Not much to do in indirect rendering mode. */
-    return avcodec_default_get_buffer2( c, pic, flags );
 }

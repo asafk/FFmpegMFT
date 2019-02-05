@@ -29,13 +29,5 @@ private:
 
 	static AVPixelFormat get_hw_format(AVCodecContext* ctx, const enum AVPixelFormat*	pix_fmts);
 	AVPixelFormat get_hw_format_internal(AVCodecContext* ctx, const enum AVPixelFormat*	pix_fmts);
-
-	static int get_buffer(struct AVCodecContext *c, AVFrame *frame, int flags);
-	int get_buffer_internal(struct AVCodecContext *c, AVFrame *pic, int flags);
-
-
-	/*Direct 3d*/
-	LPDIRECT3DSURFACE9 m_surface;
-
 };
 

@@ -6,6 +6,7 @@
 
 cpu_decoder_impl::cpu_decoder_impl()
 {
+	Logger::getInstance().LogInfo("Created SW decoder");
 }
 
 cpu_decoder_impl::~cpu_decoder_impl()
@@ -33,6 +34,7 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 		auto t1 = std::chrono::steady_clock::now();
 		ret = avcodec_send_packet(m_avContext, m_avPkt);
 		if (ret < 0) {
+			Logger::getInstance().LogWarn("Error during decoding (avcodec_send_packet)");
 			bRet = false;
 			break;
 		}			
@@ -43,6 +45,7 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
             break;
 		}
         else if (ret < 0) {
+			Logger::getInstance().LogWarn("Error during decoding (avcodec_receive_frame)");
             bRet = false;
 			break;
         }
@@ -97,7 +100,7 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 		}
 		else
 		{
-			//error
+			Logger::getInstance().LogError("Unknown pixel format &d", m_dwPixelFmt);
 		}
 #endif
 	}

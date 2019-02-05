@@ -972,41 +972,21 @@ HRESULT FFmpegMFT::ProcessOutput(
 			//	5. Create a new decoder device.
 			//	 */
 			//	BREAK_ON_FAIL(hr);
-			//}
+			//}	
 
-			CComPtr<IMFSample> outSample;
-
-			UINT32 uiWidthInPixels, uiHeightInPixels;
-			hr = MFGetAttributeSize(m_pOutputType, MF_MT_FRAME_SIZE, &uiWidthInPixels, &uiHeightInPixels);
-			BREAK_ON_FAIL(hr);
-			//now let's allocate uncompressed buffers for the outputs
-			
-			hr = m_pdxVideoDecoderService->CreateSurface(
-				uiWidthInPixels,
-				uiHeightInPixels,
-				0,
-				static_cast<D3DFORMAT>(MAKEFOURCC('N', 'V', '1', '2')),
-				D3DPOOL_DEFAULT,
-				0,
-				DXVA2_VideoDecoderRenderTarget,
-				&m_surface,
-				NULL);
-
+			IDirect3DSurface9* pSurface = NULL;
+			///do the decoding
+			hr = decode(pInputMediaBuffer,&pSurface);
 			BREAK_ON_FAIL(hr);
 
-			hr = MFCreateVideoSampleFromSurface(m_surface, &outSample);
-			BREAK_ON_FAIL(hr);
-
-			outputSample = outSample;			
-			hr = outputSample->GetBufferByIndex(0, &pOutputMediaBuffer);
+			hr = MFCreateVideoSampleFromSurface(pSurface, &outputSample);
 			BREAK_ON_FAIL(hr);
 
 			pOutputSampleBuffer[0].pSample = outputSample;
-			pOutputSampleBuffer[0].pSample->AddRef();
+			outputSample->AddRef();
 
-			///do the decoding
-			hr = decode(pInputMediaBuffer,pOutputMediaBuffer);
-			BREAK_ON_FAIL(hr);
+			//SafeRelease(&pSurface);
+			//SafeRelease(&);
 		}
 
 		//ends counting the decoding process
@@ -1051,6 +1031,7 @@ HRESULT FFmpegMFT::ProcessOutput(
 
 		m_pSample.Release();		
 
+		
         // Set status flags for output
         pOutputSampleBuffer[0].dwStatus = 0;
         *pdwStatus = 0;
@@ -1090,7 +1071,7 @@ HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOut
     }
 	else if(SUCCEEDED(hr))
 	{
-		pOut = (BYTE*)m_surface;
+		//pOut = (BYTE*)m_surface;
 	}
 
 	if (SUCCEEDED(hr))
@@ -1105,6 +1086,33 @@ HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOut
 	//return bret ? hr : MF_E_TRANSFORM_NEED_MORE_INPUT;
 	return hr;
 }
+
+HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IDirect3DSurface9** ppSurface)
+{
+	Logger::getInstance().LogDebug("FFmpegMFT::decode");
+
+	HRESULT hr = S_OK;
+
+	BYTE *pIn = NULL;
+	DWORD lenIn = 0;
+
+
+    hr = inputMediaBuffer->Lock(&pIn, NULL, &lenIn);
+	void* surface = NULL;
+	bool bret = m_decoder.decode(pIn,lenIn,surface,0);
+
+	hr = inputMediaBuffer->Unlock();
+
+	if(bret)
+	{
+		*ppSurface = (IDirect3DSurface9*)surface;
+		//(*ppSurface)->AddRef();
+	}
+
+	//return bret ? hr : MF_E_TRANSFORM_NEED_MORE_INPUT;
+	return hr;
+}
+
 
 //
 // Construct and return a partial media type with the specified index from the list of media
@@ -1342,10 +1350,10 @@ HRESULT FFmpegMFT::CheckInputMediaType(IMFMediaType* pmt)
 		hr = MFGetAttributeSize(pType, MF_MT_FRAME_SIZE, &uiWidthInPixels, &uiHeightInPixels);
 		BREAK_ON_FAIL(hr);
 
-		//Disable Supporting DXVA 2.0
-		if(m_pdxVideoDecoderService != NULL){
-			hr = MF_E_UNSUPPORTED_D3D_TYPE;
-		}
+		////Disable Supporting DXVA 2.0
+		//if(m_pdxVideoDecoderService != NULL){
+		//	hr = MF_E_UNSUPPORTED_D3D_TYPE;
+		//}
 
 		//Supporting DXVA 2.0 - Finding a Decoder Configuration
 		//if(m_pdxVideoDecoderService != NULL)
