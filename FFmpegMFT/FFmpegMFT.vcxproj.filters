@@ -54,6 +54,9 @@
     <ClInclude Include="Logger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="hybrid_decoder_impl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -80,7 +83,7 @@
     <ClCompile Include="abs_decoder_impl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Logger.cpp">
+    <ClCompile Include="hybrid_decoder_impl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

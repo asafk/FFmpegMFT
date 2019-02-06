@@ -171,6 +171,7 @@ regsvr32 $(TargetPath) /s</Command>
     <ClInclude Include="decoder.h" />
     <ClInclude Include="FFmpegMFT.h" />
     <ClInclude Include="hw_decoder_impl.h" />
+    <ClInclude Include="hybrid_decoder_impl.h" />
     <ClInclude Include="IDecoderStrategy.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="MFTClassFactory.h" />
@@ -186,6 +187,7 @@ regsvr32 $(TargetPath) /s</Command>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="FFmpegMFT.cpp" />
     <ClCompile Include="hw_decoder_impl.cpp" />
+    <ClCompile Include="hybrid_decoder_impl.cpp" />
     <ClCompile Include="MFTClassFactory.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

@@ -1,11 +1,9 @@
 #include "stdafx.h"
 #include "Decoder.h"
-#include "cpu_decoder_impl.h"
-#include "hw_decoder_impl.h"
 
-Decoder::Decoder()
+Decoder::Decoder():
+m_decoderS(NULL)
 {
-	m_decoderS = new cpu_decoder_impl();
 }
 
 Decoder::~Decoder()

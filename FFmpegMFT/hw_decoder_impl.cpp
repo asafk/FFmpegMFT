@@ -69,7 +69,6 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 
 		m_avContext->opaque = this;
 		m_avContext->get_format = get_hw_format;
-		//m_avContext->get_buffer2 = get_buffer;
 
 	    if ((av_hwdevice_ctx_create(&m_hw_device_ctx, m_type,
 	                                      NULL, NULL, 0)) < 0) {
@@ -142,14 +141,11 @@ bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int
 			break;
         }
 
-		 if (m_avFrame->format != m_hw_pix_fmt) {
-			/*frame = av_frame_alloc();
-			av_hwframe_transfer_data(frame, m_avFrame, 0);
-		 	av_frame_free(&frame);*/
-            Logger::getInstance().LogWarn("Decoded frame is SW instead of HW!");
-		 	bRet = false;
+		if (m_avFrame->format != m_hw_pix_fmt) {
+			Logger::getInstance().LogWarn("Decoded frame is SW instead of HW!");
+			bRet = false;
 			break;
-		 }
+		}
 
 		surface = m_avFrame->data[3];
 	}
@@ -171,7 +167,7 @@ AVPixelFormat hw_decoder_impl::get_hw_format_internal(AVCodecContext* ctx, const
         if (*p == m_hw_pix_fmt)
             return *p;
     }
-    fprintf(stderr, "Failed to get HW surface format.\n");
+    Logger::getInstance().LogWarn("Failed to get HW surface format.");
     
 	/* Fallback to default behaviour */
     return avcodec_default_get_format( ctx, pix_fmts );

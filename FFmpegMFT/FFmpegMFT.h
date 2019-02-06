@@ -4,8 +4,7 @@
 #include "atlcore.h"
 #include "atlcomcli.h"
 #include "decoder.h"
-#include "cpu_decoder_impl.h"
-#include "hw_decoder_impl.h"
+
 
 #include <d3d9.h>
 #include <dxva2api.h>

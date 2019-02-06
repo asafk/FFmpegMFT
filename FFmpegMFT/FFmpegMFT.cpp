@@ -9,6 +9,13 @@
 #include "CBufferLock.h"
 #include "Utils.h"
 #include "Logger.h"
+#include "cpu_decoder_impl.h"
+#include "hw_decoder_impl.h"
+
+#if 0
+	#include "hybrid_decoder_impl.h"
+	#define HYBRID_DECODER
+#endif
 
 FFmpegMFT::FFmpegMFT(void) :
     m_cRef(1),
@@ -784,7 +791,13 @@ HRESULT FFmpegMFT::ProcessMessage(
 				m_p3DDeviceManager.Release();
 				m_p3DDeviceManager = NULL;
 
-				m_decoder.setDecoderStrategy(new cpu_decoder_impl());
+				m_decoder.setDecoderStrategy(
+#ifdef HYBRID_DECODER
+					new hybrid_decoder_impl()
+#else
+					new cpu_decoder_impl()
+#endif
+				);
 			}
 			else //get the pointer to the Direct3D device manger
 			{
@@ -1025,7 +1038,7 @@ HRESULT FFmpegMFT::ProcessOutput(
 		hr = outputSample->SetSampleTime(m_sampleTime);
 		BREAK_ON_FAIL(hr);			
 		
-    	DebugOut((L"S.t %10I64d S.d %10I64d t %10I64d d %10I64d\n"),sampleTime, sampleDuration, m_sampleTime, duration100Nano);
+    	DebugOut((L"S.t %10I64d S.d %10I64d t %10I64d d %10I64d DecodeTime= %6.3f\n"),sampleTime, sampleDuration, m_sampleTime, duration100Nano, (double)(duration100Nano* 100) / 1000000);
 		
     	m_sampleTime += sampleDuration;
 
@@ -1350,10 +1363,10 @@ HRESULT FFmpegMFT::CheckInputMediaType(IMFMediaType* pmt)
 		hr = MFGetAttributeSize(pType, MF_MT_FRAME_SIZE, &uiWidthInPixels, &uiHeightInPixels);
 		BREAK_ON_FAIL(hr);
 
-		////Disable Supporting DXVA 2.0
-		//if(m_pdxVideoDecoderService != NULL){
-		//	hr = MF_E_UNSUPPORTED_D3D_TYPE;
-		//}
+		//Disable Supporting DXVA 2.0
+		if(m_pdxVideoDecoderService != NULL){
+			hr = MF_E_UNSUPPORTED_D3D_TYPE;
+		}
 
 		//Supporting DXVA 2.0 - Finding a Decoder Configuration
 		//if(m_pdxVideoDecoderService != NULL)
