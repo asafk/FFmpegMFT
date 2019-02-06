@@ -33,7 +33,7 @@ bool Decoder::release()
 
 void Decoder::flush()
 {
-	m_decoderS->flush();
+	m_decoderS != NULL ? m_decoderS->flush(): (void)true;
 }
 
 bool Decoder::decode(unsigned char* in, int in_size, void*& out, int pitch)

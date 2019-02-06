@@ -24,6 +24,14 @@ FFmpegMFT::FFmpegMFT(void) :
 	m_pConfigs(NULL),
 	m_pRenderTargetFormats(NULL)*/
 {
+	m_decoder.setDecoderStrategy(
+#ifdef HYBRID_DECODER
+					new hybrid_decoder_impl()
+#else
+					new cpu_decoder_impl()
+#endif
+		);
+	
 	Logger::getInstance().LogDebug("FFmpegMFT::FFmpegMFT");
 }
 
