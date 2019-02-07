@@ -18,7 +18,7 @@
 #endif
 
 FFmpegMFT::FFmpegMFT(void) :
-    m_cRef(1),
+    m_cRef(0),
 	m_sampleTime(0),
 	m_h3dDevice(NULL)/*,
 	m_pConfigs(NULL),
@@ -1172,9 +1172,7 @@ HRESULT FFmpegMFT::GetSupportedInputMediaType(
             // that there is no media type with that index
             hr = MF_E_NO_MORE_TYPES;
         }
-        BREAK_ON_FAIL(hr);
-
-		
+        BREAK_ON_FAIL(hr);		
 
         // detach the underlying IUnknown pointer from the pmt CComPtr without
         // releasing the pointer so that we can return that object to the caller.
