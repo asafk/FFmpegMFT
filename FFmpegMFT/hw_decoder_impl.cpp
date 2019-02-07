@@ -7,7 +7,7 @@ m_type(AV_HWDEVICE_TYPE_NONE),
 m_hw_device_ctx(NULL),
 m_hw_pix_fmt(AV_PIX_FMT_NONE)
 {
-	Logger::getInstance().LogInfo("Created HW decoder");
+	Logger::getInstance().LogInfo("Using HW decoding");
 }
 
 hw_decoder_impl::~hw_decoder_impl()

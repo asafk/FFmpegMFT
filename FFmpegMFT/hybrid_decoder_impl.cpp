@@ -9,7 +9,7 @@ m_hw_device_ctx(NULL),
 m_hw_pix_fmt(AV_PIX_FMT_NONE),
 m_avHWFrame(NULL)
 {
-	Logger::getInstance().LogInfo("Created Hybrid decoder");
+	Logger::getInstance().LogInfo("Using Hybrid decoding");
 }
 
 hybrid_decoder_impl::~hybrid_decoder_impl()
@@ -249,9 +249,11 @@ AVPixelFormat hybrid_decoder_impl::get_hw_format_internal(AVCodecContext* ctx, c
     for (p = pix_fmts; *p != -1; p++) {
         if (*p == m_hw_pix_fmt)
             return *p;
-    }
-    Logger::getInstance().LogError("Failed to get HW surface format.");
+    }   
     
 	/* Fallback to default behaviour */
-    return avcodec_default_get_format( ctx, pix_fmts );
+    AVPixelFormat default_format = avcodec_default_get_format( ctx, pix_fmts );
+
+	Logger::getInstance().LogWarn("Failed to get HW surface format, fallback to SW decoding with pixelFormat=%d", default_format);
+	return default_format;
 }

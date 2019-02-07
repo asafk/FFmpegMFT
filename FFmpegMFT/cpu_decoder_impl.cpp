@@ -6,7 +6,7 @@
 
 cpu_decoder_impl::cpu_decoder_impl()
 {
-	Logger::getInstance().LogInfo("Created SW decoder");
+	Logger::getInstance().LogInfo("Using SW decoding");
 }
 
 cpu_decoder_impl::~cpu_decoder_impl()
