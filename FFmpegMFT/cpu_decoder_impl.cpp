@@ -1,8 +1,5 @@
 #include "stdafx.h"
 #include "cpu_decoder_impl.h"
-#include <cassert>
-
-#include "utils.h"
 
 cpu_decoder_impl::cpu_decoder_impl()
 {
@@ -31,7 +28,6 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 		m_avPkt->data = in;
 		m_avPkt->size = in_size;
 
-		auto t1 = std::chrono::steady_clock::now();
 		ret = avcodec_send_packet(m_avContext, m_avPkt);
 		if (ret < 0) {
 			Logger::getInstance().LogWarn("Error during decoding (avcodec_send_packet)");
@@ -49,12 +45,6 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
             bRet = false;
 			break;
         }
-
-		auto t2 = std::chrono::steady_clock::now();		
-
-		/*DebugOut((L"%f\n"),
-			std::chrono::duration <double, std::milli> (t2-t1).count());*/
-
 	}
 	while (false);
 
@@ -63,8 +53,8 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 #ifdef USE_BUFFER2
 #else
 		DWORD height = m_avFrame->height;
-		DWORD yStride = m_avFrame->width;
-		DWORD uvStride =  m_avFrame->width / 2;
+		DWORD yStride = m_avFrame->linesize[0];
+		DWORD uvStride =  m_avFrame->linesize[1];
 		BYTE* pY = m_avFrame->data[0];
 		BYTE* pV = m_avFrame->data[1];
 		BYTE* pU = m_avFrame->data[2];
@@ -79,7 +69,7 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 			BYTE* pUVBuffer = (BYTE*)out + height * pitch;
 
 			for (DWORD row = 0; row < uvHeight; row++){
-				for(int col = 0; col < m_avFrame->linesize[1]; col++){
+				for(int col = 0; col < uvStride; col++){
 
 					pUVBuffer[row * pitch + col*2] = pV[row * uvStride + col];
 					pUVBuffer[row * pitch + col*2 + 1] = pU[row * uvStride + col];
