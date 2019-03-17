@@ -9,7 +9,8 @@ template <class T> void SafeRelease(T **ppT)
     }
 }
 
-HRESULT GetDefaultStride(IMFMediaType *pType, LONG *plStride)
+//https://docs.microsoft.com/en-us/windows/desktop/medfound/uncompressed-video-buffers#use-the-imfmediabuffer-interface
+inline HRESULT GetDefaultStride(IMFMediaType *pType, LONG *plStride)
 {
     LONG lStride = 0;
 
@@ -126,7 +127,7 @@ public:
         }
 		else
 		{
-			return S_FALSE;
+			return E_POINTER;
 		}
 
         m_bLocked = (SUCCEEDED(hr));

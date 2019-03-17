@@ -1,9 +1,12 @@
 #include "stdafx.h"
 #include "hw_decoder_impl.h"
+#include "dbg.h"
+#include "Utils.h"
 
 
-hw_decoder_impl::hw_decoder_impl(): 
+hw_decoder_impl::hw_decoder_impl(IDirect3DDeviceManager9* deviceManager9):
 m_type(AV_HWDEVICE_TYPE_NONE),
+m_deviceManager9(deviceManager9),
 m_hw_device_ctx(NULL),
 m_hw_pix_fmt(AV_PIX_FMT_NONE)
 {
@@ -46,10 +49,9 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 		for (int i = 0;; i++) {
 	        const AVCodecHWConfig *config = avcodec_get_hw_config(m_avCodec, i);
 	        if (!config) {
-	            Logger::getInstance().LogWarn("Decoder %s does not support device type %s.",
+	            Logger::getInstance().LogError("Decoder %s does not support device type %s.",
 	                    m_avCodec->name, av_hwdevice_get_type_name(m_type));
-	            bRet = false;
-	        	break;
+	            return false;
 	        }
 	        if (config->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX &&
 	            config->device_type == m_type) {
@@ -58,44 +60,64 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 	        }
 		}
 
-		if(bRet == false)
-			break;
-
 		if (!(m_avContext = avcodec_alloc_context3(m_avCodec))){
-			Logger::getInstance().LogWarn("Failed to create context for Decoder %s.",m_avCodec->name);
+			Logger::getInstance().LogError("Failed to create context for Decoder %s.",m_avCodec->name);
 			bRet = false;
 			break;
 		}
 
-		m_avContext->opaque = this;
-		m_avContext->get_format = get_hw_format;
+		/*m_avContext->opaque = this;
+		m_avContext->get_format = get_hw_format;*/
 
-	    if ((av_hwdevice_ctx_create(&m_hw_device_ctx, m_type,
-	                                      NULL, NULL, 0)) < 0) {
-	    	Logger::getInstance().LogWarn("Failed to create specified HW device.");
+		/* associate the device manager device to FFmpeg device */
+		if(m_deviceManager9 == NULL)
+		{
+			//TODO: fallback to SW
+			Logger::getInstance().LogError("Direct 3D device manager is missing fall back to SW.");
+			bRet = false;
+			break;
+		}
+
+		if( !(m_hw_device_ctx = av_hwdevice_ctx_alloc(m_type)))
+		{
+			Logger::getInstance().LogError("Failed to alloc specified HW device.");
 	    	bRet = false;
 	    	break;
-	    }
+		}
+
+		AVHWDeviceContext *ctx = (AVHWDeviceContext *)m_hw_device_ctx->data;
+		AVDXVA2DeviceContext *hwctx = (AVDXVA2DeviceContext*)ctx->hwctx;
+
+		hwctx->devmgr = m_deviceManager9;
+
+		if (av_hwdevice_ctx_init(m_hw_device_ctx) < 0)
+		{
+			Logger::getInstance().LogError("Failed to init specified HW device.");
+	    	bRet = false;
+	    	break;
+		}
+
 	    m_avContext->hw_device_ctx = av_buffer_ref(m_hw_device_ctx);
 
 		if ((avcodec_open2(m_avContext, m_avCodec, NULL)) < 0) {
-	        Logger::getInstance().LogWarn("Failed to open codec for stream.");
+	        Logger::getInstance().LogError("Failed to open codec for stream.");
 			bRet = false;
 	    	break;
 		}
 
 		m_avPkt = av_packet_alloc();
 		if (m_avPkt == NULL){
+			Logger::getInstance().LogError("Cannot allocate av_packet.");
 			bRet = false;
 			break;
 		}
 
 		m_avFrame = av_frame_alloc();
 		if (m_avFrame == NULL) {
+			Logger::getInstance().LogError("Cannot allocate av_frame.");
 			bRet = false;
 			break;
 		}
-
 	}
 	while (false);
 
@@ -147,7 +169,16 @@ bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int
 			break;
 		}
 
-		surface = m_avFrame->data[3];
+		if(m_avFrame->data[3] != NULL)
+		{
+			surface = m_avFrame->data[3];
+		}
+		else
+		{
+			Logger::getInstance().LogWarn("Surface is not ready with decoded frame");
+			bRet = false;
+			break;
+		}
 	}
 	while (false);
 

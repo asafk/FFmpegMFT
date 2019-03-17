@@ -5,11 +5,8 @@
 #include "atlcomcli.h"
 #include "decoder.h"
 
-
 #include <d3d9.h>
 #include <dxva2api.h>
-
-#define NUM_DIRECT3D_SURFACE 3
 
 using namespace ATL;
 
@@ -19,7 +16,8 @@ class FFmpegMFT :  public IMFTransform
 
 		FFmpegMFT();
 		~FFmpegMFT();
-		
+
+		//
 		// IMFTransform stream handling functions
 		STDMETHODIMP GetStreamLimits(  DWORD* pdwInputMinimum, DWORD* pdwInputMaximum, DWORD* pdwOutputMinimum, DWORD* pdwOutputMaximum );
 
@@ -50,12 +48,10 @@ class FFmpegMFT :  public IMFTransform
 	    STDMETHODIMP ProcessEvent( DWORD dwInputStreamID, IMFMediaEvent* pEvent );
 	    STDMETHODIMP GetAttributes( IMFAttributes** pAttributes );
 
-
 	    //
 	    // IMFTransform main data processing and command functions
 	    STDMETHODIMP ProcessMessage( MFT_MESSAGE_TYPE eMessage, ULONG_PTR ulParam );
 	    STDMETHODIMP ProcessInput( DWORD dwInputStreamID, IMFSample* pSample, DWORD dwFlags);
-
 	    STDMETHODIMP ProcessOutput( DWORD dwFlags, DWORD cOutputBufferCount, MFT_OUTPUT_DATA_BUFFER* pOutputSamples, DWORD* pdwStatus);
 
 	    //
@@ -63,8 +59,7 @@ class FFmpegMFT :  public IMFTransform
 	    //
 	    virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObject);
 	    virtual ULONG STDMETHODCALLTYPE AddRef(void);
-	    virtual ULONG STDMETHODCALLTYPE Release(void);
-	
+	    virtual ULONG STDMETHODCALLTYPE Release(void);	
 
 	private:
 
@@ -76,24 +71,25 @@ class FFmpegMFT :  public IMFTransform
 	    CComPtr<IMFMediaType> m_pOutputType;     // Output media type.
 		LONGLONG m_sampleTime;
 
-		//DXVA  support
-		HANDLE m_h3dDevice;
-		CComPtr<IDirect3DDeviceManager9> m_p3DDeviceManager; //3d manager
+		//DXVA support using Direct3D 9 
+		HANDLE m_hD3d9Device;
+		CComPtr<IDirect3DDeviceManager9> m_pDirect3DDeviceManager9; //3d device manager using 'Direct3D 9' TODO: add Direct3D 11 interface IMFDXGIDeviceManager 
+		CComPtr<IDirect3DDevice9> m_pDirect3DDevice9; //3d device
 		CComPtr<IDirectXVideoDecoderService> m_pdxVideoDecoderService; //video DXVA service
-		//CComPtr<IDirectXVideoDecoder> m_pVideoDecoder;
-		//D3DFORMAT* m_pRenderTargetFormats;
-		//DXVA2_VideoDesc m_Dxva2Desc;
-		//DXVA2_ConfigPictureDecode* m_pConfigs;
-		//CComPtr<IMFSample>  m_pSampleOut[3];
-		LPDIRECT3DSURFACE9 m_surface;
-
-
+		// parameters 
+		D3DFORMAT* m_pRenderTargetFormats;
+		UINT m_uiNumOfRenderTargetFormats;
+		DXVA2_ConfigPictureDecode* m_pConfigs;
 
 		// private helper functions
 		HRESULT GetSupportedOutputMediaType(DWORD dwTypeIndex, IMFMediaType** ppmt);
 		HRESULT GetSupportedInputMediaType(DWORD dwTypeIndex, IMFMediaType** ppmt);
 		HRESULT CheckInputMediaType(IMFMediaType *pmt);
 		HRESULT CheckOutputMediaType(IMFMediaType *pmt);
+
+		//DXVA2 helper functions
+		HRESULT ConvertMFTypeToDXVAType(IMFMediaType *pType, DXVA2_VideoDesc *pDesc);
+		HRESULT GetDXVA2ExtendedFormatFromMFMediaType(IMFMediaType *pType, DXVA2_ExtendedFormat *pFormat);
 
 		//FFmpeg decoding
 		HRESULT decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOutputMediaBuffer);
