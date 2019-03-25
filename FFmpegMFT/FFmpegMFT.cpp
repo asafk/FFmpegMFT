@@ -782,11 +782,13 @@ HRESULT FFmpegMFT::ProcessMessage(
 	{
 		case MFT_MESSAGE_COMMAND_FLUSH:
 			Logger::getInstance().LogInfo("ProcessMessage - MFT_MESSAGE_COMMAND_FLUSH");
+			m_decoder.flush();
+			m_pSample = NULL;
+		break;
 		case MFT_MESSAGE_COMMAND_DRAIN:
 			// Flush the MFT - release all samples in it and reset the state
 			Logger::getInstance().LogInfo("ProcessMessage - MFT_MESSAGE_COMMAND_DRAIN");
-			m_decoder.flush();
-			m_pSample = NULL;
+			
 		break;
 
 		case MFT_MESSAGE_SET_D3D_MANAGER:
@@ -1047,34 +1049,31 @@ HRESULT FFmpegMFT::ProcessOutput(
 
 		LONGLONG sampleDuration;
 		hr = m_pSample->GetSampleDuration(&sampleDuration);
-		if(hr == MF_E_NO_SAMPLE_DURATION){
-			//Find fps from the input type
-			UINT32 framerate_n, framerate_d;
-			hr = MFGetAttributeRatio(m_pInputType, MF_MT_FRAME_RATE, &framerate_n, &framerate_d);
-			BREAK_ON_FAIL(hr);
+		if(hr == MF_E_NO_SAMPLE_DURATION){ //Stream behavior
 
-			if(framerate_n != 0 && framerate_d != 0)
-				sampleDuration = (LONGLONG)floor(((double)framerate_d / framerate_n) * 10000000);
-			else
-				sampleDuration = sampleTime - m_sampleTime; //default
+			//set output sample time
+			hr = outputSample->SetSampleTime(sampleTime);
+			BREAK_ON_FAIL(hr);			
+		
+    		DebugOut((L"S.t %10I64d DecodeTime= %6.3f\n"),sampleTime, (double)(duration100Nano* 100) / 1000000);
 
-		} else if(FAILED(hr)){
+		} else { //File container behavior
+
 			BREAK_ON_FAIL(hr);
-		} else {
-			
 			//set out sample duration
 			hr = outputSample->SetSampleDuration(sampleDuration);
 			BREAK_ON_FAIL(hr);
 			sampleDuration = max(sampleDuration,duration100Nano);
-		}
-	
-		//set output sample time
-		hr = outputSample->SetSampleTime(m_sampleTime);
-		BREAK_ON_FAIL(hr);			
+
+			//set output sample time
+			hr = outputSample->SetSampleTime(m_sampleTime);
+			BREAK_ON_FAIL(hr);			
 		
-    	DebugOut((L"S.t %10I64d S.d %10I64d t %10I64d d %10I64d DecodeTime= %6.3f\n"),sampleTime, sampleDuration, m_sampleTime, duration100Nano, (double)(duration100Nano* 100) / 1000000);
+    		DebugOut((L"S.t %10I64d S.d %10I64d t %10I64d d %10I64d DecodeTime= %6.3f\n"),sampleTime, sampleDuration, m_sampleTime, duration100Nano, (double)(duration100Nano* 100) / 1000000);
 		
-    	m_sampleTime += sampleDuration;
+    		m_sampleTime += sampleDuration;
+		}	
+		
 		m_pSample.Release();
 		
         // Set status flags for output
