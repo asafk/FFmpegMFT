@@ -785,10 +785,10 @@ HRESULT FFmpegMFT::ProcessMessage(
 			m_decoder.flush();
 			m_pSample = NULL;
 		break;
+
 		case MFT_MESSAGE_COMMAND_DRAIN:
 			// Flush the MFT - release all samples in it and reset the state
-			Logger::getInstance().LogInfo("ProcessMessage - MFT_MESSAGE_COMMAND_DRAIN");
-			
+			Logger::getInstance().LogInfo("ProcessMessage - MFT_MESSAGE_COMMAND_DRAIN");			
 		break;
 
 		case MFT_MESSAGE_SET_D3D_MANAGER:
@@ -856,6 +856,7 @@ HRESULT FFmpegMFT::ProcessMessage(
 		case MFT_MESSAGE_NOTIFY_BEGIN_STREAMING:
 			Logger::getInstance().LogInfo("ProcessMessage - MFT_MESSAGE_NOTIFY_BEGIN_STREAMING");
 		break;
+
 		case MFT_MESSAGE_NOTIFY_START_OF_STREAM:
 			Logger::getInstance().LogInfo("ProcessMessage - MFT_MESSAGE_NOTIFY_START_OF_STREAM");
 			// Extract the subtype to make sure that the subtype is one that we support
@@ -888,9 +889,11 @@ HRESULT FFmpegMFT::ProcessMessage(
 		case MFT_MESSAGE_NOTIFY_END_STREAMING:
 			Logger::getInstance().LogInfo("ProcessMessage - MFT_MESSAGE_NOTIFY_END_STREAMING");
 		break;
+
 		case MFT_MESSAGE_NOTIFY_END_OF_STREAM:
 			Logger::getInstance().LogInfo("ProcessMessage - MFT_MESSAGE_NOTIFY_END_OF_STREAM");
 		break;
+
 		default:
 		break;
 	}
@@ -958,13 +961,12 @@ HRESULT FFmpegMFT::ProcessOutput(
 {
 	Logger::getInstance().LogDebug("FFmpegMFT::ProcessOutput");
 
+    CComCritSecLock<CComAutoCriticalSection> lock(m_critSec);
+
     HRESULT hr = S_OK;
 
     do
     {
-        // lock the MFT
-        CComCritSecLock<CComAutoCriticalSection> lock(m_critSec);
-
         BREAK_ON_NULL(pOutputSampleBuffer, E_POINTER);
         BREAK_ON_NULL(pdwStatus, E_POINTER);
 
@@ -1015,7 +1017,7 @@ HRESULT FFmpegMFT::ProcessOutput(
 			//	BREAK_ON_FAIL(hr);
 			//}	
 
-			IDirect3DSurface9* pSurface = NULL;
+			CComPtr<IDirect3DSurface9> pSurface = NULL;
 
 			//do the decoding
 			hr = decode(pInputMediaBuffer,&pSurface);
@@ -1028,13 +1030,6 @@ HRESULT FFmpegMFT::ProcessOutput(
 
 			pOutputSampleBuffer[0].pSample = outputSample;
 			pOutputSampleBuffer[0].pSample->AddRef();
-
-			//debug
-			//D3DSURFACE_DESC desc;
-			//hr = pSurface->GetDesc(&desc);
-
-			//TODO: check later 
-			//SafeRelease(&pSurface);
 		}
 
 		//ends counting the decoding process
@@ -1072,15 +1067,15 @@ HRESULT FFmpegMFT::ProcessOutput(
     		DebugOut((L"S.t %10I64d S.d %10I64d t %10I64d d %10I64d DecodeTime= %6.3f\n"),sampleTime, sampleDuration, m_sampleTime, duration100Nano, (double)(duration100Nano* 100) / 1000000);
 		
     		m_sampleTime += sampleDuration;
-		}	
-		
-		m_pSample.Release();
-		
-        // Set status flags for output
-        pOutputSampleBuffer[0].dwStatus = 0;
-        *pdwStatus = 0;
+		}			
     }
     while(false);
+
+	m_pSample.Release();
+		
+    // Set status flags for output
+    pOutputSampleBuffer[0].dwStatus = 0;
+    *pdwStatus = 0;
 
     return hr;
 }
