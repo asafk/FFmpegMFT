@@ -12,7 +12,6 @@ cpu_decoder_impl::~cpu_decoder_impl()
 
 bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pitch)
 {
-	bool bRet = true;
 	int ret;
 
 	do
@@ -31,25 +30,18 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 		ret = avcodec_send_packet(m_avContext, m_avPkt);
 		if (ret < 0) {
 			Logger::getInstance().LogWarn("Error during decoding (avcodec_send_packet)");
-			bRet = false;
 			break;
 		}			
 
         ret = avcodec_receive_frame(m_avContext, m_avFrame);
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF){
-			bRet = false;
             break;
 		}
         else if (ret < 0) {
 			Logger::getInstance().LogWarn("Error during decoding (avcodec_receive_frame)");
-            bRet = false;
 			break;
         }
-	}
-	while (false);
 
-	if(bRet == true)
-	{
 #ifdef USE_BUFFER2
 #else
 		DWORD height = m_avFrame->height;
@@ -94,8 +86,9 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 		}
 #endif
 	}
+	while (false);	
 
-	return bRet;
+	return true;
 }
 
 #if USE_BUFFER2

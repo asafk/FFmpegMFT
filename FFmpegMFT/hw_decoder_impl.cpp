@@ -148,18 +148,15 @@ bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int
 		ret = avcodec_send_packet(m_avContext, m_avPkt);
 		if (ret < 0) {
 			Logger::getInstance().LogWarn("Error during decoding (avcodec_send_packet)");
-			bRet = false;
 			break;
 		}
 
         ret = avcodec_receive_frame(m_avContext, m_avFrame);
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF){			
-			bRet = false;
             break;
 		}
         else if (ret < 0) {
 			Logger::getInstance().LogWarn("Error while decoding (avcodec_receive_frame)");
-            bRet = false;
 			break;
         }
 
@@ -176,7 +173,6 @@ bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int
 		else
 		{
 			Logger::getInstance().LogWarn("Surface is not ready with decoded frame");
-			bRet = false;
 			break;
 		}
 	}
