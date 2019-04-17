@@ -24,6 +24,8 @@ FFmpegMFT::FFmpegMFT(void) :
 	m_pRenderTargetFormats(NULL),
 	m_uiNumOfRenderTargetFormats(0)
 {
+	Logger::getInstance().LogDebug("FFmpegMFT::FFmpegMFT");
+
 	m_decoder.setDecoderStrategy(
 #ifdef HYBRID_DECODER
 					new hybrid_decoder_impl()
@@ -31,8 +33,7 @@ FFmpegMFT::FFmpegMFT(void) :
 					new cpu_decoder_impl()
 #endif
 		);
-	
-	Logger::getInstance().LogDebug("FFmpegMFT::FFmpegMFT");
+	m_pSampleOutMap.clear();
 }
 
 FFmpegMFT::~FFmpegMFT(void)
@@ -51,6 +52,12 @@ FFmpegMFT::~FFmpegMFT(void)
 		CoTaskMemFree(m_pConfigs);
 		m_pConfigs = NULL;
 	}
+
+	for (SampleToSurfaceMapIter itr = m_pSampleOutMap.begin(); itr != m_pSampleOutMap.end(); ++itr) {
+		Logger::getInstance().LogDebug("FFmpegMFT::~FFmpegMFT Release VideoSample, sample=0x%x", itr->second);
+		SafeRelease(&itr->second);
+	}
+	m_pSampleOutMap.clear();
 }
 
 //
@@ -58,13 +65,13 @@ FFmpegMFT::~FFmpegMFT(void)
 //
 ULONG FFmpegMFT::AddRef()
 {
-	//OutputDebugString(_T("\n\nAddRef\n\n"));
+	//Logger::getInstance().LogDebug("FFmpegMFT::AddRef %d", m_cRef);
     return InterlockedIncrement(&m_cRef);
 }
 
 ULONG FFmpegMFT::Release()
 {
-	//OutputDebugString(_T("\n\nRelease\n\n"));
+	//Logger::getInstance().LogDebug("FFmpegMFT::Release %d", m_cRef);
 
     ULONG refCount = InterlockedDecrement(&m_cRef);
     if (refCount == 0)
@@ -77,7 +84,7 @@ ULONG FFmpegMFT::Release()
 
 HRESULT FFmpegMFT::QueryInterface(REFIID riid, void** ppv)
 {
-	//OutputDebugString(_T("\n\nQueryInterface\n\n"));
+	//Logger::getInstance().LogDebug("FFmpegMFT::QueryInterface");
 
     HRESULT hr = S_OK;
 
@@ -88,9 +95,13 @@ HRESULT FFmpegMFT::QueryInterface(REFIID riid, void** ppv)
 
     if (riid == IID_IUnknown)
     {
-        *ppv = static_cast<IUnknown*>(this);
+        *ppv = static_cast<IUnknown*>(static_cast<IMFTransform*>(this));
     }
-    else if (riid == IID_IMFTransform)
+    else if (riid == IID_IMFAsyncCallback)
+    {
+        *ppv = static_cast<IMFAsyncCallback*>(this);
+    }
+	else if (riid == IID_IMFTransform)
     {
         *ppv = static_cast<IMFTransform*>(this);
     }
@@ -777,13 +788,18 @@ HRESULT FFmpegMFT::ProcessMessage(
 
     CComCritSecLock<CComAutoCriticalSection> lock(m_critSec);
 
-
 	switch (eMessage)
 	{
 		case MFT_MESSAGE_COMMAND_FLUSH:
 			Logger::getInstance().LogInfo("ProcessMessage - MFT_MESSAGE_COMMAND_FLUSH");
 			m_decoder.flush();
 			m_pSample = NULL;
+			Logger::getInstance().LogDebug("FFmpegMFT::ProcessMessage Removing all surface/VideoSample");
+			for (SampleToSurfaceMapIter itr = m_pSampleOutMap.begin(); itr != m_pSampleOutMap.end(); ++itr) {
+				Logger::getInstance().LogDebug("FFmpegMFT::ProcessMessage Release VideoSample, sample=0x%x", itr->second);
+				SafeRelease(&itr->second);
+			}
+			m_pSampleOutMap.clear();
 		break;
 
 		case MFT_MESSAGE_COMMAND_DRAIN:
@@ -1017,7 +1033,8 @@ HRESULT FFmpegMFT::ProcessOutput(
 			//	BREAK_ON_FAIL(hr);
 			//}	
 
-			CComPtr<IDirect3DSurface9> pSurface = NULL;
+			CComPtr<IMFTrackedSample> pTrackSample = NULL;
+			IDirect3DSurface9* pSurface = NULL;
 
 			//do the decoding
 			hr = decode(pInputMediaBuffer,&pSurface);
@@ -1025,11 +1042,30 @@ HRESULT FFmpegMFT::ProcessOutput(
 
 			if(pSurface == NULL) break;
 
-			hr = MFCreateVideoSampleFromSurface(pSurface, &outputSample);
-			BREAK_ON_FAIL(hr);
+			SampleToSurfaceMapIter it = m_pSampleOutMap.find(pSurface);
+			if(it != m_pSampleOutMap.end())
+			{
+				outputSample = it->second;
+			}
+			else
+			{
+				hr = MFCreateVideoSampleFromSurface(pSurface, &outputSample);
+				BREAK_ON_FAIL(hr);
+
+				hr = outputSample->QueryInterface(IID_IMFTrackedSample, reinterpret_cast<void**>(&pTrackSample));
+				BREAK_ON_FAIL(hr);
+
+				hr = pTrackSample->SetAllocator(this, pSurface);
+				BREAK_ON_FAIL(hr);
+
+				m_pSampleOutMap.insert(pair<IDirect3DSurface9*,IMFSample*>(pSurface, outputSample));
+				Logger::getInstance().LogDebug("FFmpegMFT::ProcessOutput Add new surface/VideoSample to map surface=0x%x, sample=0x%x", pSurface, outputSample);
+			}			
 
 			pOutputSampleBuffer[0].pSample = outputSample;
 			pOutputSampleBuffer[0].pSample->AddRef();
+
+			Logger::getInstance().LogDebug("FFmpegMFT::ProcessOutput sample=0x%x surface=0x%x", outputSample, pSurface);
 		}
 
 		//ends counting the decoding process
@@ -1067,7 +1103,7 @@ HRESULT FFmpegMFT::ProcessOutput(
     		DebugOut((L"S.t %10I64d S.d %10I64d t %10I64d d %10I64d DecodeTime= %6.3f\n"),sampleTime, sampleDuration, m_sampleTime, duration100Nano, (double)(duration100Nano* 100) / 1000000);
 		
     		m_sampleTime += sampleDuration;
-		}			
+		}
     }
     while(false);
 
@@ -1078,6 +1114,42 @@ HRESULT FFmpegMFT::ProcessOutput(
     *pdwStatus = 0;
 
     return hr;
+}
+
+HRESULT FFmpegMFT::GetParameters(DWORD* pdwFlags, DWORD* pdwQueue)
+{
+	Logger::getInstance().LogDebug("FFmpegMFT::GetParameters"); 
+	return E_NOTIMPL; 
+}
+
+HRESULT FFmpegMFT::Invoke(IMFAsyncResult* pAsyncResult)
+{
+	Logger::getInstance().LogDebug("FFmpegMFT::Invoke");
+
+	HRESULT hr = S_OK;	
+
+	do
+	{
+		 // lock the MFT
+        CComCritSecLock<CComAutoCriticalSection> lock(m_critSec);
+
+        BREAK_ON_NULL(pAsyncResult, E_POINTER);
+
+		hr = pAsyncResult->GetStatus();
+		BREAK_ON_FAIL(hr);
+
+		CComPtr<IUnknown> pState = NULL;
+
+		hr = pAsyncResult->GetState(&pState);
+		BREAK_ON_NULL(pState, E_POINTER);	
+
+		Logger::getInstance().LogDebug("FFmpegMFT::Invoke Release surface, surface=0x%x", pState);
+
+		pState.Release();
+	}
+	while (false);
+	
+	return hr;
 }
 
 

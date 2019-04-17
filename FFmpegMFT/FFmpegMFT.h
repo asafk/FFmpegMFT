@@ -10,7 +10,10 @@
 
 using namespace ATL;
 
-class FFmpegMFT :  public IMFTransform
+typedef std::map<IDirect3DSurface9*,IMFSample*> SampleToSurfaceMap;
+typedef SampleToSurfaceMap::iterator SampleToSurfaceMapIter;
+
+class FFmpegMFT :  public IMFTransform, public IMFAsyncCallback
 {
 	public:
 
@@ -54,9 +57,13 @@ class FFmpegMFT :  public IMFTransform
 	    STDMETHODIMP ProcessInput( DWORD dwInputStreamID, IMFSample* pSample, DWORD dwFlags);
 	    STDMETHODIMP ProcessOutput( DWORD dwFlags, DWORD cOutputBufferCount, MFT_OUTPUT_DATA_BUFFER* pOutputSamples, DWORD* pdwStatus);
 
+		//
+		// IMFAsyncCallback -
+		STDMETHODIMP GetParameters(DWORD* pdwFlags, DWORD* pdwQueue);
+		STDMETHODIMP Invoke(IMFAsyncResult* pAsyncResult);
+
 	    //
 	    // IUnknown interface implementation
-	    //
 	    virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObject);
 	    virtual ULONG STDMETHODCALLTYPE AddRef(void);
 	    virtual ULONG STDMETHODCALLTYPE Release(void);	
@@ -80,6 +87,8 @@ class FFmpegMFT :  public IMFTransform
 		D3DFORMAT* m_pRenderTargetFormats;
 		UINT m_uiNumOfRenderTargetFormats;
 		DXVA2_ConfigPictureDecode* m_pConfigs;
+		//Uncompressed Buffers
+		SampleToSurfaceMap m_pSampleOutMap;
 
 		// private helper functions
 		HRESULT GetSupportedOutputMediaType(DWORD dwTypeIndex, IMFMediaType** ppmt);
