@@ -30,6 +30,9 @@ public:
 		log4cpp::Category::shutdown();
 	}
 
+	const char* GeneralLoggerCategory = "GeneralLogger";
+	const char* FFmpegLoggerCategory = "FFmpegLogger";
+
 	static Logger& getInstance()
 	{
 		//"Meyers Singleton"
@@ -39,14 +42,36 @@ public:
 		return instance;
 	}
 
+	bool IsPiriorityLevelEnabled(int priorityLevel, const char* category)
+	{
+		log4cpp::Category& logger = 
+		log4cpp::Category::getInstance(std::string(category));
+		if(&logger != NULL && logger.isPriorityEnabled(priorityLevel))
+		{
+			return true;
+		}
+		return false;
+	}
+
+	template<typename... Args> 
+	void Log(int level, const char* category, const char* stringFormat, Args... args)
+	{
+		log4cpp::Category& logger = 
+		log4cpp::Category::getInstance(std::string(category));
+		if(&logger != NULL && logger.isPriorityEnabled(level))
+		{
+			logger.log(level, stringFormat, args...);
+		}
+	}
+
 	template<typename... Args> 
 	void LogDebug(const char* stringFormat, Args... args)
 	{
 		log4cpp::Category& GeneralLogger = 
-		log4cpp::Category::getInstance(std::string("GeneralLogger"));
+		log4cpp::Category::getInstance(std::string(GeneralLoggerCategory));
 		if(GeneralLogger.isDebugEnabled())
 		{
-			GeneralLogger.debug(stringFormat,args...);
+			GeneralLogger.debug(stringFormat, args...);
 		}
 	}
 
@@ -54,10 +79,10 @@ public:
 	void LogInfo(const char* stringFormat, Args... args)
 	{
 		log4cpp::Category& GeneralLogger = 
-		log4cpp::Category::getInstance(std::string("GeneralLogger"));
+		log4cpp::Category::getInstance(std::string(GeneralLoggerCategory));
 		if(GeneralLogger.isInfoEnabled())
 		{
-			GeneralLogger.info(stringFormat,args...);					
+			GeneralLogger.info(stringFormat, args...);					
 		}
 	}
 
@@ -65,10 +90,10 @@ public:
 	void LogWarn(const char* stringFormat, Args... args)
 	{
 		log4cpp::Category& GeneralLogger = 
-		log4cpp::Category::getInstance(std::string("GeneralLogger"));
+		log4cpp::Category::getInstance(std::string(GeneralLoggerCategory));
 		if(GeneralLogger.isWarnEnabled())
 		{
-			GeneralLogger.warn(stringFormat,args...);				
+			GeneralLogger.warn(stringFormat, args...);				
 		}
 	}
 
@@ -76,11 +101,10 @@ public:
 	void LogError(const char* stringFormat, Args... args)
 	{
 		log4cpp::Category& GeneralLogger = 
-		log4cpp::Category::getInstance(std::string("GeneralLogger"));
+		log4cpp::Category::getInstance(std::string(GeneralLoggerCategory));
 		if(GeneralLogger.isErrorEnabled())
 		{
-			GeneralLogger.error(stringFormat,args...);				
+			GeneralLogger.error(stringFormat, args...);				
 		}
 	}
 };
-
