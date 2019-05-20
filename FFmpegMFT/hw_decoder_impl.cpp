@@ -66,8 +66,8 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 			break;
 		}
 
-		/*m_avContext->opaque = this;
-		m_avContext->get_format = get_hw_format;*/
+		m_avContext->opaque = this;
+		m_avContext->get_format = get_hw_format;
 
 		/* associate the device manager device to FFmpeg device */
 		if(m_deviceManager9 == NULL)
@@ -137,7 +137,6 @@ bool hw_decoder_impl::release()
 bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int none)
 {
 	bool bRet = true;
-	AVFrame *frame = NULL;
     int ret = 0;
 
 	do
@@ -189,6 +188,9 @@ AVPixelFormat hw_decoder_impl::get_hw_format(AVCodecContext* ctx, const AVPixelF
 
 AVPixelFormat hw_decoder_impl::get_hw_format_internal(AVCodecContext* ctx, const AVPixelFormat* pix_fmts)
 {
+	if(ctx->profile == FF_PROFILE_H264_BASELINE)
+		ctx->hwaccel_flags |= AV_HWACCEL_FLAG_ALLOW_PROFILE_MISMATCH;
+
 	const enum AVPixelFormat *p;
     for (p = pix_fmts; *p != -1; p++) {
         if (*p == m_hw_pix_fmt)
