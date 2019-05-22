@@ -13,7 +13,7 @@ using namespace ATL;
 typedef std::map<IDirect3DSurface9*,IMFSample*> SampleToSurfaceMap;
 typedef SampleToSurfaceMap::iterator SampleToSurfaceMapIter;
 
-class FFmpegMFT :  public IMFTransform, public IMFAsyncCallback
+class FFmpegMFT :  public IMFTransform
 {
 	public:
 
@@ -57,11 +57,6 @@ class FFmpegMFT :  public IMFTransform, public IMFAsyncCallback
 	    STDMETHODIMP ProcessInput( DWORD dwInputStreamID, IMFSample* pSample, DWORD dwFlags);
 	    STDMETHODIMP ProcessOutput( DWORD dwFlags, DWORD cOutputBufferCount, MFT_OUTPUT_DATA_BUFFER* pOutputSamples, DWORD* pdwStatus);
 
-		//
-		// IMFAsyncCallback -
-		STDMETHODIMP GetParameters(DWORD* pdwFlags, DWORD* pdwQueue);
-		STDMETHODIMP Invoke(IMFAsyncResult* pAsyncResult);
-
 	    //
 	    // IUnknown interface implementation
 	    virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObject);
@@ -99,6 +94,7 @@ class FFmpegMFT :  public IMFTransform, public IMFAsyncCallback
 		//DXVA2 helper functions
 		HRESULT ConvertMFTypeToDXVAType(IMFMediaType *pType, DXVA2_VideoDesc *pDesc);
 		HRESULT GetDXVA2ExtendedFormatFromMFMediaType(IMFMediaType *pType, DXVA2_ExtendedFormat *pFormat);
+		void	ReleaseSurfaces();
 
 		//FFmpeg decoding
 		HRESULT decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOutputMediaBuffer);

@@ -53,11 +53,7 @@ FFmpegMFT::~FFmpegMFT(void)
 		m_pConfigs = NULL;
 	}
 
-	for (SampleToSurfaceMapIter itr = m_pSampleOutMap.begin(); itr != m_pSampleOutMap.end(); ++itr) {
-		Logger::getInstance().LogDebug("FFmpegMFT::~FFmpegMFT Release VideoSample, sample=0x%x", itr->second);
-		SafeRelease(&itr->second);
-	}
-	m_pSampleOutMap.clear();
+	ReleaseSurfaces();
 }
 
 //
@@ -95,11 +91,7 @@ HRESULT FFmpegMFT::QueryInterface(REFIID riid, void** ppv)
 
     if (riid == IID_IUnknown)
     {
-        *ppv = static_cast<IUnknown*>(static_cast<IMFTransform*>(this));
-    }
-    else if (riid == IID_IMFAsyncCallback)
-    {
-        *ppv = static_cast<IMFAsyncCallback*>(this);
+        *ppv = static_cast<IUnknown*>(this);
     }
 	else if (riid == IID_IMFTransform)
     {
@@ -792,14 +784,7 @@ HRESULT FFmpegMFT::ProcessMessage(
 	{
 		case MFT_MESSAGE_COMMAND_FLUSH:
 			Logger::getInstance().LogInfo("ProcessMessage - MFT_MESSAGE_COMMAND_FLUSH");
-			m_decoder.flush();
 			m_pSample = NULL;
-			Logger::getInstance().LogDebug("FFmpegMFT::ProcessMessage Removing all surface/VideoSample");
-			for (SampleToSurfaceMapIter itr = m_pSampleOutMap.begin(); itr != m_pSampleOutMap.end(); ++itr) {
-				Logger::getInstance().LogDebug("FFmpegMFT::ProcessMessage Release VideoSample, sample=0x%x", itr->second);
-				SafeRelease(&itr->second);
-			}
-			m_pSampleOutMap.clear();
 		break;
 
 		case MFT_MESSAGE_COMMAND_DRAIN:
@@ -1033,7 +1018,6 @@ HRESULT FFmpegMFT::ProcessOutput(
 			//	BREAK_ON_FAIL(hr);
 			//}	
 
-			CComPtr<IMFTrackedSample> pTrackSample = NULL;
 			IDirect3DSurface9* pSurface = NULL;
 
 			//do the decoding
@@ -1052,12 +1036,6 @@ HRESULT FFmpegMFT::ProcessOutput(
 				hr = MFCreateVideoSampleFromSurface(pSurface, &outputSample);
 				BREAK_ON_FAIL(hr);
 
-				hr = outputSample->QueryInterface(IID_IMFTrackedSample, reinterpret_cast<void**>(&pTrackSample));
-				BREAK_ON_FAIL(hr);
-
-				hr = pTrackSample->SetAllocator(this, pSurface);
-				BREAK_ON_FAIL(hr);
-
 				m_pSampleOutMap.insert(pair<IDirect3DSurface9*,IMFSample*>(pSurface, outputSample));
 				Logger::getInstance().LogDebug("FFmpegMFT::ProcessOutput Add new surface/VideoSample to map surface=0x%x, sample=0x%x", pSurface, outputSample);
 			}			
@@ -1065,7 +1043,7 @@ HRESULT FFmpegMFT::ProcessOutput(
 			pOutputSampleBuffer[0].pSample = outputSample;
 			pOutputSampleBuffer[0].pSample->AddRef();
 
-			Logger::getInstance().LogDebug("FFmpegMFT::ProcessOutput sample=0x%x surface=0x%x", outputSample, pSurface);
+			Logger::getInstance().LogDebug("FFmpegMFT::ProcessOutput surface=0x%x, sample=0x%x", pSurface, outputSample);
 		}
 
 		//ends counting the decoding process
@@ -1114,42 +1092,6 @@ HRESULT FFmpegMFT::ProcessOutput(
     *pdwStatus = 0;
 
     return hr;
-}
-
-HRESULT FFmpegMFT::GetParameters(DWORD* pdwFlags, DWORD* pdwQueue)
-{
-	Logger::getInstance().LogDebug("FFmpegMFT::GetParameters"); 
-	return E_NOTIMPL; 
-}
-
-HRESULT FFmpegMFT::Invoke(IMFAsyncResult* pAsyncResult)
-{
-	Logger::getInstance().LogDebug("FFmpegMFT::Invoke");
-
-	HRESULT hr = S_OK;	
-
-	do
-	{
-		 // lock the MFT
-        CComCritSecLock<CComAutoCriticalSection> lock(m_critSec);
-
-        BREAK_ON_NULL(pAsyncResult, E_POINTER);
-
-		hr = pAsyncResult->GetStatus();
-		BREAK_ON_FAIL(hr);
-
-		CComPtr<IUnknown> pState = NULL;
-
-		hr = pAsyncResult->GetState(&pState);
-		BREAK_ON_NULL(pState, E_POINTER);	
-
-		Logger::getInstance().LogDebug("FFmpegMFT::Invoke Release surface, surface=0x%x", pState);
-
-		pState.Release();
-	}
-	while (false);
-	
-	return hr;
 }
 
 
@@ -1636,6 +1578,15 @@ HRESULT FFmpegMFT::GetDXVA2ExtendedFormatFromMFMediaType(IMFMediaType *pType, DX
         MF_MT_TRANSFER_FUNCTION, MFVideoTransFunc_Unknown);
 
     return S_OK;
+}
+
+void FFmpegMFT::ReleaseSurfaces()
+{
+	for (SampleToSurfaceMapIter itr = m_pSampleOutMap.begin(); itr != m_pSampleOutMap.end(); ++itr) {
+		Logger::getInstance().LogDebug("FFmpegMFT::ReleaseSurfaces Release surface/VideoSample, surface=0x%x, sample=0x%x", itr->first, itr->second);
+		SafeRelease(&itr->second);
+	}
+	m_pSampleOutMap.clear();
 }
 
 HRESULT FFmpegMFT::ConvertMFTypeToDXVAType(IMFMediaType *pType, DXVA2_VideoDesc *pDesc)
