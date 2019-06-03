@@ -856,10 +856,6 @@ HRESULT FFmpegMFT::ProcessMessage(
 
 		case MFT_MESSAGE_NOTIFY_BEGIN_STREAMING:
 			Logger::getInstance().LogInfo("ProcessMessage - MFT_MESSAGE_NOTIFY_BEGIN_STREAMING");
-		break;
-
-		case MFT_MESSAGE_NOTIFY_START_OF_STREAM:
-			Logger::getInstance().LogInfo("ProcessMessage - MFT_MESSAGE_NOTIFY_START_OF_STREAM");
 			// Extract the subtype to make sure that the subtype is one that we support
 		    GUID subtype_in, subtype_out;
 		    hr = m_pInputType->GetGUID(MF_MT_SUBTYPE, &subtype_in);
@@ -868,6 +864,7 @@ HRESULT FFmpegMFT::ProcessMessage(
 			hr = m_pOutputType->GetGUID(MF_MT_SUBTYPE, &subtype_out);
 		    BREAK_ON_FAIL(hr);
 
+			ReleaseSurfaces();
 			//Release the old decoder
 			m_decoder.release();
 		    // verify that the specified media type has one of the acceptable subtypes -
@@ -884,6 +881,11 @@ HRESULT FFmpegMFT::ProcessMessage(
 			}
 
 			BREAK_ON_FAIL(hr);
+		break;
+
+		case MFT_MESSAGE_NOTIFY_START_OF_STREAM:
+			Logger::getInstance().LogInfo("ProcessMessage - MFT_MESSAGE_NOTIFY_START_OF_STREAM");
+			
 			m_sampleTime = 0;
 		break;
 
