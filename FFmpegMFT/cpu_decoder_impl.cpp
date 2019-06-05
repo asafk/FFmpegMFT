@@ -3,7 +3,7 @@
 
 cpu_decoder_impl::cpu_decoder_impl()
 {
-	Logger::getInstance().LogInfo("Using SW decoding");
+	Logger::getInstance().LogInfo("Mode SW is active");
 }
 
 cpu_decoder_impl::~cpu_decoder_impl()

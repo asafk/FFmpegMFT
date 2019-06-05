@@ -10,7 +10,7 @@ m_deviceManager9(deviceManager9),
 m_hw_device_ctx(NULL),
 m_hw_pix_fmt(AV_PIX_FMT_NONE)
 {
-	Logger::getInstance().LogInfo("Using HW decoding");
+	Logger::getInstance().LogInfo("Mode HW is active");
 }
 
 hw_decoder_impl::~hw_decoder_impl()

@@ -403,7 +403,6 @@ HRESULT FFmpegMFT::GetInputAvailableType(
     DWORD           dwTypeIndex, 
     IMFMediaType    **ppType)
 {
-
 	Logger::getInstance().LogDebug("FFmpegMFT::GetInputAvailableType");
 
     HRESULT hr = S_OK;
@@ -423,6 +422,11 @@ HRESULT FFmpegMFT::GetInputAvailableType(
         }
 
         hr = GetSupportedInputMediaType(dwTypeIndex, &pmt);
+		if(hr == MF_E_NO_MORE_TYPES)
+		{
+			break;
+		}
+
         BREAK_ON_FAIL(hr);
 
         // return the resulting media type
@@ -1196,7 +1200,7 @@ HRESULT FFmpegMFT::GetSupportedInputMediaType(
         { 
             // if we don't have any more media types, return an error signifying
             // that there is no media type with that index
-            hr = MF_E_NO_MORE_TYPES;
+            return MF_E_NO_MORE_TYPES;
         }
         BREAK_ON_FAIL(hr);		
 
