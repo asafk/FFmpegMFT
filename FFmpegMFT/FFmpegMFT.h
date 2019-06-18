@@ -84,6 +84,9 @@ class FFmpegMFT :  public IMFTransform
 		DXVA2_ConfigPictureDecode* m_pConfigs;
 		//Uncompressed Buffers
 		SampleToSurfaceMap m_pSampleOutMap;
+		UINT32 m_unEffectiveFrameWidth;
+		UINT32 m_unEffectiveFrameHeight;
+		bool m_bEffectiveResMatch;
 
 		// private helper functions
 		HRESULT GetSupportedOutputMediaType(DWORD dwTypeIndex, IMFMediaType** ppmt);

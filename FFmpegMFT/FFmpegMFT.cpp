@@ -22,7 +22,10 @@ FFmpegMFT::FFmpegMFT(void) :
 	m_hD3d9Device(NULL),
 	m_pConfigs(NULL),
 	m_pRenderTargetFormats(NULL),
-	m_uiNumOfRenderTargetFormats(0)
+	m_uiNumOfRenderTargetFormats(0),
+	m_unEffectiveFrameWidth(-1),
+	m_unEffectiveFrameHeight(-1),
+	m_bEffectiveResMatch(true)
 {
 	Logger::getInstance().LogDebug("FFmpegMFT::FFmpegMFT");
 
@@ -889,7 +892,7 @@ HRESULT FFmpegMFT::ProcessMessage(
 
 		case MFT_MESSAGE_NOTIFY_START_OF_STREAM:
 			Logger::getInstance().LogInfo("ProcessMessage - MFT_MESSAGE_NOTIFY_START_OF_STREAM");
-			
+			m_bEffectiveResMatch = true;
 			m_sampleTime = 0;
 		break;
 
@@ -971,6 +974,7 @@ HRESULT FFmpegMFT::ProcessOutput(
     CComCritSecLock<CComAutoCriticalSection> lock(m_critSec);
 
     HRESULT hr = S_OK;
+	DWORD pOutputSampleBufferStatus = 0;
 
     do
     {
@@ -1031,6 +1035,25 @@ HRESULT FFmpegMFT::ProcessOutput(
 			BREAK_ON_FAIL(hr);
 
 			if(pSurface == NULL) break;
+
+			D3DSURFACE_DESC desc;
+			hr = pSurface->GetDesc(&desc);
+			BREAK_ON_FAIL(hr);
+
+			UINT32 width, height;
+			hr = MFGetAttributeSize(m_pOutputType, MF_MT_FRAME_SIZE, &width, &height);
+			BREAK_ON_FAIL(hr);
+			
+			if(m_bEffectiveResMatch == true && (width != desc.Width || height != desc.Height))
+			{
+				Logger::getInstance().LogInfo("FFmpegMFT::ProcessOutput The format has changed on an output stream, effective resolution is %dX%d for video resolution %dX%d ", desc.Width, desc.Height, width, height);
+				pOutputSampleBufferStatus = MFT_OUTPUT_DATA_BUFFER_FORMAT_CHANGE;
+				m_unEffectiveFrameWidth = desc.Width;
+				m_unEffectiveFrameHeight = desc.Height;
+				m_bEffectiveResMatch = false;
+				hr = MF_E_TRANSFORM_STREAM_CHANGE;
+				break;
+			}
 
 			SampleToSurfaceMapIter it = m_pSampleOutMap.find(pSurface);
 			if(it != m_pSampleOutMap.end())
@@ -1094,7 +1117,7 @@ HRESULT FFmpegMFT::ProcessOutput(
 	m_pSample.Release();
 		
     // Set status flags for output
-    pOutputSampleBuffer[0].dwStatus = 0;
+    pOutputSampleBuffer[0].dwStatus = pOutputSampleBufferStatus;
     *pdwStatus = 0;
 
     return hr;
@@ -1284,6 +1307,17 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
 		UINT32 width, height;
 		hr = MFGetAttributeSize(m_pInputType, MF_MT_FRAME_SIZE, &width, &height);
 		BREAK_ON_FAIL(hr);
+
+		if(m_bEffectiveResMatch != true)
+		{
+			//set also the geometric aperture to the preferred resolution
+			const MFVideoArea area = MakeArea(0, 0, width, height);
+			pmt->SetBlob(MF_MT_GEOMETRIC_APERTURE, (UINT8*)&area, sizeof(MFVideoArea));
+
+			width = m_unEffectiveFrameWidth;
+			height = m_unEffectiveFrameHeight;
+			m_bEffectiveResMatch = true;			
+		}
 
 		hr = pmt->SetUINT32(MF_MT_ALL_SAMPLES_INDEPENDENT, TRUE);
 		BREAK_ON_FAIL(hr);
@@ -1532,6 +1566,7 @@ HRESULT FFmpegMFT::CheckInputMediaType(IMFMediaType* pmt)
 			else{
 				Logger::getInstance().LogWarn("FFmpegMFT::CheckInputMediaType didn't found proper HW supporting decoder");
 				hr = MF_E_UNSUPPORTED_D3D_TYPE;
+				CoTaskMemFree(pGuids);
 				BREAK_ON_FAIL(hr);
 			}
 

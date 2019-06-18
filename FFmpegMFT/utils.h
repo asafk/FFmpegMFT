@@ -308,3 +308,21 @@ inline LPCWSTR GetGUIDNameConst(const GUID& guid)
 
     return NULL;
 }
+
+inline MFOffset MakeOffset(float v)
+{
+    MFOffset offset;
+    offset.value = short(v);
+    offset.fract = WORD(65536 * (v-offset.value));
+    return offset;
+}
+
+inline MFVideoArea MakeArea(float x, float y, DWORD width, DWORD height)
+{
+    MFVideoArea area;
+    area.OffsetX = MakeOffset(x);
+    area.OffsetY = MakeOffset(y);
+    area.Area.cx = width;
+    area.Area.cy = height;
+    return area;
+}
