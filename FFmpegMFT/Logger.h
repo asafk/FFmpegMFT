@@ -30,8 +30,8 @@ public:
 		log4cpp::Category::shutdown();
 	}
 
-	const char* GeneralLoggerCategory = "GeneralLogger";
-	const char* FFmpegLoggerCategory = "FFmpegLogger";
+	const char* FFmpegMFTCategory = "FFmpegMFT";
+	const char* FFmpegLibraryCategory = "FFmpegLibrary";
 
 	static Logger& getInstance()
 	{
@@ -68,7 +68,7 @@ public:
 	void LogDebug(const char* stringFormat, Args... args)
 	{
 		log4cpp::Category& GeneralLogger = 
-		log4cpp::Category::getInstance(std::string(GeneralLoggerCategory));
+		log4cpp::Category::getInstance(std::string(FFmpegMFTCategory));
 		if(GeneralLogger.isDebugEnabled())
 		{
 			GeneralLogger.debug(stringFormat, args...);
@@ -79,7 +79,7 @@ public:
 	void LogInfo(const char* stringFormat, Args... args)
 	{
 		log4cpp::Category& GeneralLogger = 
-		log4cpp::Category::getInstance(std::string(GeneralLoggerCategory));
+		log4cpp::Category::getInstance(std::string(FFmpegMFTCategory));
 		if(GeneralLogger.isInfoEnabled())
 		{
 			GeneralLogger.info(stringFormat, args...);					
@@ -90,7 +90,7 @@ public:
 	void LogWarn(const char* stringFormat, Args... args)
 	{
 		log4cpp::Category& GeneralLogger = 
-		log4cpp::Category::getInstance(std::string(GeneralLoggerCategory));
+		log4cpp::Category::getInstance(std::string(FFmpegMFTCategory));
 		if(GeneralLogger.isWarnEnabled())
 		{
 			GeneralLogger.warn(stringFormat, args...);				
@@ -101,7 +101,7 @@ public:
 	void LogError(const char* stringFormat, Args... args)
 	{
 		log4cpp::Category& GeneralLogger = 
-		log4cpp::Category::getInstance(std::string(GeneralLoggerCategory));
+		log4cpp::Category::getInstance(std::string(FFmpegMFTCategory));
 		if(GeneralLogger.isErrorEnabled())
 		{
 			GeneralLogger.error(stringFormat, args...);				
