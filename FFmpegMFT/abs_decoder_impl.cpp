@@ -35,7 +35,7 @@ void abs_decoder_impl::log(int level, const char* fmt, va_list vargs)
 		break;
 	}
 
-	if(Logger::getInstance().IsPiriorityLevelEnabled(normalLevel, Logger::getInstance().FFmpegLibraryCategory))
+	if(Logger::getInstance().IsPiriorityLevelEnabled(normalLevel, Logger::getInstance().FFmpegLibCategory))
 	{
 		char dbg_out[512];	
 		vsprintf_s(dbg_out, fmt, vargs);
@@ -44,7 +44,7 @@ void abs_decoder_impl::log(int level, const char* fmt, va_list vargs)
 		str.append(dbg_out);
 
 		str.erase(std::remove(str.begin(), str.end(), '\n'), str.end());
-		Logger::getInstance().Log(normalLevel, Logger::getInstance().FFmpegLibraryCategory, str.c_str());	
+		Logger::getInstance().Log(normalLevel, Logger::getInstance().FFmpegLibCategory, str.c_str());	
 	}	
 }
 

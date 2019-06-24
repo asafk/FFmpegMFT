@@ -31,7 +31,7 @@ public:
 	}
 
 	const char* FFmpegMFTCategory = "FFmpegMFT";
-	const char* FFmpegLibraryCategory = "FFmpegLibrary";
+	const char* FFmpegLibCategory = "FFmpegLib";
 
 	static Logger& getInstance()
 	{
