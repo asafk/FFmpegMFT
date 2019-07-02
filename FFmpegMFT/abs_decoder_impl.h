@@ -12,11 +12,11 @@ public:
 	abs_decoder_impl();
 	virtual ~abs_decoder_impl();
 
-	bool init(std::string codecName, DWORD pixel_format);
-	bool release();	
+	virtual bool init(std::string codecName, DWORD pixel_format);
+	virtual bool release();	
 
-	bool decode(unsigned char* in, int in_size, void*& out, int pitch) = 0;
-	void flush();
+	virtual bool decode(unsigned char* in, int in_size, void*& out, int pitch) = 0;
+	virtual void flush();
 
 	static void log_callback(void* ptr, int level, const char* fmt, va_list vargs);
 	void log(int level, const char* fmt, va_list vargs);

@@ -60,7 +60,7 @@ m_dwPixelFmt(0)
 
 abs_decoder_impl::~abs_decoder_impl()
 {
-	release();
+	abs_decoder_impl::release();
 }
 
 bool abs_decoder_impl::init(std::string codecName, DWORD pixel_format)

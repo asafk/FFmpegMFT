@@ -15,6 +15,7 @@ m_hw_pix_fmt(AV_PIX_FMT_NONE)
 
 hw_decoder_impl::~hw_decoder_impl()
 {
+	hw_decoder_impl::release();
 }
 
 bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
