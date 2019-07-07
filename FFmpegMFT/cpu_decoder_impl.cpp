@@ -12,6 +12,13 @@ cpu_decoder_impl::~cpu_decoder_impl()
 
 bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pitch)
 {
+	//Initialization check
+	if(m_avPkt == NULL || m_avContext == NULL || m_avFrame == NULL)
+	{
+		Logger::getInstance().LogError("SW mode decoder not initialized");
+		return false;
+	}
+
 	int ret;
 
 	do
@@ -52,6 +59,13 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 		BYTE* pU = m_avFrame->data[2];
 		DWORD uvHeight = height / 2;
 		LONG uvPitch = pitch / 2;
+
+		//validation check
+		if(pitch < yStride){
+			Logger::getInstance().LogWarn("Decoded resolution %dX%d not suitable to expected resolution (stride=%d)",
+				m_avFrame->width, m_avFrame->height, pitch);
+			break;
+		}
 
 		for (DWORD row = 0; row < height; row++)
 			memcpy((BYTE*)out + row * pitch, &pY[row * yStride], yStride);		

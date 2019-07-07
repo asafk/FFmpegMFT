@@ -23,7 +23,6 @@ public:
 
 private:
 
-	enum AVHWDeviceType m_type;
 	AVFrame *m_avHWFrame;
 
 	AVBufferRef *m_hw_device_ctx;

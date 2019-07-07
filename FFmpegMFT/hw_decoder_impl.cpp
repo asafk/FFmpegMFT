@@ -5,7 +5,6 @@
 
 
 hw_decoder_impl::hw_decoder_impl(IDirect3DDeviceManager9* deviceManager9):
-m_type(AV_HWDEVICE_TYPE_NONE),
 m_deviceManager9(deviceManager9),
 m_hw_device_ctx(NULL),
 m_hw_pix_fmt(AV_PIX_FMT_NONE)
@@ -24,45 +23,47 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 
 	do
 	{
-		m_type = av_hwdevice_find_type_by_name("dxva2");
-	    if (m_type == AV_HWDEVICE_TYPE_NONE) {
+		AVHWDeviceType type = AV_HWDEVICE_TYPE_NONE;
+		type = av_hwdevice_find_type_by_name("dxva2");
+	    if (type == AV_HWDEVICE_TYPE_NONE) {
 	        Logger::getInstance().LogWarn("Device type %s is not supported.", "dxva2");
 	        Logger::getInstance().LogInfo("Available device types:");
-	        while((m_type = av_hwdevice_iterate_types(m_type)) != AV_HWDEVICE_TYPE_NONE)
-	            Logger::getInstance().LogInfo(" %s", av_hwdevice_get_type_name(m_type));
+	        while((type = av_hwdevice_iterate_types(type)) != AV_HWDEVICE_TYPE_NONE)
+	            Logger::getInstance().LogInfo(" %s", av_hwdevice_get_type_name(type));
 
 			bRet = false;
 	        break;
 	    }
 
+		AVCodec* avCodec = NULL; 
 		/* find the video decoder according to codecName*/
 		/* currently support only HEVC or H.264*/
 		if(codecName.compare("HEVC") == 0)
-			m_avCodec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
+			avCodec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
 		else
-			m_avCodec = avcodec_find_decoder(AV_CODEC_ID_H264);
+			avCodec = avcodec_find_decoder(AV_CODEC_ID_H264);
 
-	    if (m_avCodec == NULL) {
+	    if (avCodec == NULL) {
 			bRet = false;
 			break;
 	    }
 
 		for (int i = 0;; i++) {
-	        const AVCodecHWConfig *config = avcodec_get_hw_config(m_avCodec, i);
+	        const AVCodecHWConfig *config = avcodec_get_hw_config(avCodec, i);
 	        if (!config) {
 	            Logger::getInstance().LogError("Decoder %s does not support device type %s.",
-	                    m_avCodec->name, av_hwdevice_get_type_name(m_type));
+	                    avCodec->name, av_hwdevice_get_type_name(type));
 	            return false;
 	        }
 	        if (config->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX &&
-	            config->device_type == m_type) {
+	            config->device_type == type) {
 	            m_hw_pix_fmt = config->pix_fmt;
 	            break;
 	        }
 		}
 
-		if (!(m_avContext = avcodec_alloc_context3(m_avCodec))){
-			Logger::getInstance().LogError("Failed to create context for Decoder %s.",m_avCodec->name);
+		if (!(m_avContext = avcodec_alloc_context3(avCodec))){
+			Logger::getInstance().LogError("Failed to create context for Decoder %s.",avCodec->name);
 			bRet = false;
 			break;
 		}
@@ -79,7 +80,7 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 			break;
 		}
 
-		if( !(m_hw_device_ctx = av_hwdevice_ctx_alloc(m_type)))
+		if( !(m_hw_device_ctx = av_hwdevice_ctx_alloc(type)))
 		{
 			Logger::getInstance().LogError("Failed to alloc specified HW device.");
 	    	bRet = false;
@@ -100,7 +101,7 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 
 	    m_avContext->hw_device_ctx = av_buffer_ref(m_hw_device_ctx);
 
-		if ((avcodec_open2(m_avContext, m_avCodec, NULL)) < 0) {
+		if ((avcodec_open2(m_avContext, avCodec, NULL)) < 0) {
 	        Logger::getInstance().LogError("Failed to open codec for stream.");
 			bRet = false;
 	    	break;
@@ -137,6 +138,13 @@ bool hw_decoder_impl::release()
 
 bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int none)
 {
+	//Initialization check
+	if(m_avPkt == NULL || m_avContext == NULL || m_avFrame == NULL || m_hw_device_ctx == NULL)
+	{
+		Logger::getInstance().LogError("HW mode decoder not initialized");
+		return false;
+	}
+
 	bool bRet = true;
     int ret = 0;
 

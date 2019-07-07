@@ -23,7 +23,6 @@ public:
 
 private:
 
-	enum AVHWDeviceType m_type;
 	IDirect3DDeviceManager9* m_deviceManager9;
 
 	AVBufferRef *m_hw_device_ctx;

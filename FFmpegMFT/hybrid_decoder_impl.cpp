@@ -4,7 +4,6 @@
 
 
 hybrid_decoder_impl::hybrid_decoder_impl(): 
-m_type(AV_HWDEVICE_TYPE_NONE),
 m_hw_device_ctx(NULL),
 m_hw_pix_fmt(AV_PIX_FMT_NONE),
 m_avHWFrame(NULL)
@@ -14,6 +13,7 @@ m_avHWFrame(NULL)
 
 hybrid_decoder_impl::~hybrid_decoder_impl()
 {
+	hybrid_decoder_impl::release();
 }
 
 bool hybrid_decoder_impl::init(std::string codecName, DWORD pixel_format)
@@ -22,39 +22,41 @@ bool hybrid_decoder_impl::init(std::string codecName, DWORD pixel_format)
 
 	do
 	{
-		m_type = av_hwdevice_find_type_by_name("dxva2");
-	    if (m_type == AV_HWDEVICE_TYPE_NONE) {
+		enum AVHWDeviceType type;
+		type = av_hwdevice_find_type_by_name("dxva2");
+	    if (type == AV_HWDEVICE_TYPE_NONE) {
 	        Logger::getInstance().LogWarn("Device type %s is not supported.", "dxva2");
 	        Logger::getInstance().LogInfo("Available device types:");
-	        while((m_type = av_hwdevice_iterate_types(m_type)) != AV_HWDEVICE_TYPE_NONE)
-	            Logger::getInstance().LogInfo(" %s", av_hwdevice_get_type_name(m_type));
+	        while((type = av_hwdevice_iterate_types(type)) != AV_HWDEVICE_TYPE_NONE)
+	            Logger::getInstance().LogInfo(" %s", av_hwdevice_get_type_name(type));
 
 			bRet = false;
 	        break;
 	    }
 
+		AVCodec* avCodec = NULL; 
 		/* find the video decoder according to codecName*/
 		/* currently support only HEVC or H.264*/
 		if(codecName.compare("HEVC") == 0)
-			m_avCodec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
+			avCodec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
 		else
-			m_avCodec = avcodec_find_decoder(AV_CODEC_ID_H264);
+			avCodec = avcodec_find_decoder(AV_CODEC_ID_H264);
 
-	    if (m_avCodec == NULL) {
+	    if (avCodec == NULL) {
 			bRet = false;
 			break;
 	    }
 
 		for (int i = 0;; i++) {
-	        const AVCodecHWConfig *config = avcodec_get_hw_config(m_avCodec, i);
+	        const AVCodecHWConfig *config = avcodec_get_hw_config(avCodec, i);
 	        if (!config) {
 	            Logger::getInstance().LogWarn("Decoder %s does not support device type %s.",
-	                    m_avCodec->name, av_hwdevice_get_type_name(m_type));
+	                    avCodec->name, av_hwdevice_get_type_name(type));
 	            bRet = false;
 	        	break;
 	        }
 	        if (config->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX &&
-	            config->device_type == m_type) {
+	            config->device_type == type) {
 	            m_hw_pix_fmt = config->pix_fmt;
 	            break;
 	        }
@@ -63,8 +65,8 @@ bool hybrid_decoder_impl::init(std::string codecName, DWORD pixel_format)
 		if(bRet == false)
 			break;
 
-		if (!(m_avContext = avcodec_alloc_context3(m_avCodec))){
-			Logger::getInstance().LogWarn("Failed to create context for Decoder %s.",m_avCodec->name);
+		if (!(m_avContext = avcodec_alloc_context3(avCodec))){
+			Logger::getInstance().LogWarn("Failed to create context for Decoder %s.",avCodec->name);
 			bRet = false;
 			break;
 		}
@@ -72,7 +74,7 @@ bool hybrid_decoder_impl::init(std::string codecName, DWORD pixel_format)
 		m_avContext->opaque = this;
 		m_avContext->get_format = get_hw_format;
 
-	    if ((av_hwdevice_ctx_create(&m_hw_device_ctx, m_type,
+	    if ((av_hwdevice_ctx_create(&m_hw_device_ctx, type,
 	                                      NULL, NULL, 0)) < 0) {
 	    	Logger::getInstance().LogWarn("Failed to create specified HW device.");
 	    	bRet = false;
@@ -80,7 +82,7 @@ bool hybrid_decoder_impl::init(std::string codecName, DWORD pixel_format)
 	    }
 	    m_avContext->hw_device_ctx = av_buffer_ref(m_hw_device_ctx);
 
-		if ((avcodec_open2(m_avContext, m_avCodec, NULL)) < 0) {
+		if ((avcodec_open2(m_avContext, avCodec, NULL)) < 0) {
 	        Logger::getInstance().LogWarn("Failed to open codec for stream.");
 			bRet = false;
 	    	break;
@@ -127,6 +129,13 @@ bool hybrid_decoder_impl::release()
 
 bool hybrid_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pitch)
 {
+	//Initialization check
+	if(m_avPkt == NULL || m_avContext == NULL || m_avFrame == NULL || m_hw_device_ctx == NULL || m_avHWFrame == NULL)
+	{
+		Logger::getInstance().LogError("Hybrid mode decoder not initialized");
+		return false;
+	}
+
 	bool bRet = true;
 	bool bGpuDecode = true;
 	int ret;
@@ -177,6 +186,13 @@ bool hybrid_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int
 
 		DWORD uvHeight = height / 2;
 		LONG uvPitch = pitch / 2;
+
+		//validation check
+		if(pitch < yStride){
+			Logger::getInstance().LogWarn("Decoded resolution %dX%d not suitable to expected resolution (stride=%d)",
+				m_avFrame->width, m_avFrame->height, pitch);
+			break;
+		}
 
 		for (DWORD row = 0; row < height; row++)
 			memcpy((BYTE*)out + row * pitch, &pY[row * yStride], yStride);		

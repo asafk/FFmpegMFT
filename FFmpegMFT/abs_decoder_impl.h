@@ -23,7 +23,6 @@ public:
 
 protected:
 	/*FFmpeg related members*/
-	AVCodec *m_avCodec;
 	AVCodecContext *m_avContext;
 	AVFrame *m_avFrame;
 	AVPacket *m_avPkt;
