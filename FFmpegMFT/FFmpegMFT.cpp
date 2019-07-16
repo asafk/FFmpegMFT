@@ -1034,7 +1034,11 @@ HRESULT FFmpegMFT::ProcessOutput(
 			hr = decode(pInputMediaBuffer,&pSurface);
 			BREAK_ON_FAIL(hr);
 
-			if(pSurface == NULL) break;
+			if(pSurface == NULL) 
+			{
+				ReleaseSurfaces();
+				break;
+			}
 
 			D3DSURFACE_DESC desc;
 			hr = pSurface->GetDesc(&desc);

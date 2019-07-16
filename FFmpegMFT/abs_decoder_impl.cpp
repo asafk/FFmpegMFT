@@ -49,6 +49,7 @@ void abs_decoder_impl::log(int level, const char* fmt, va_list vargs)
 }
 
 abs_decoder_impl::abs_decoder_impl():
+m_avCodec(NULL),
 m_avContext(NULL),
 m_avFrame(NULL),
 m_avPkt(NULL),
@@ -68,27 +69,26 @@ bool abs_decoder_impl::init(std::string codecName, DWORD pixel_format)
 	
 	do
 	{
-		AVCodec* avCodec = NULL; 
 		/* find the video decoder according to codecName*/
 		/* currently support only HEVC or H.264*/
 		if(codecName.compare("HEVC") == 0)
-			avCodec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
+			m_avCodec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
 		else
-			avCodec = avcodec_find_decoder(AV_CODEC_ID_H264);
+			m_avCodec = avcodec_find_decoder(AV_CODEC_ID_H264);
 
-	    if (avCodec == NULL) {
+	    if (m_avCodec == NULL) {
 			bRet = false;
 			break;
 	    }		
 		
-		m_avContext = avcodec_alloc_context3(avCodec);
+		m_avContext = avcodec_alloc_context3(m_avCodec);
 		if (m_avContext == NULL){
 			bRet = false;
 			break;
 		}
 
 		/* open it */
-	    if (avcodec_open2(m_avContext, avCodec, NULL) < 0) {
+	    if (avcodec_open2(m_avContext, m_avCodec, NULL) < 0) {
 	        bRet = false;
 			break;
 	    }
@@ -130,6 +130,8 @@ bool abs_decoder_impl::release()
 		av_packet_free(&m_avPkt);
 		m_avPkt = NULL;
 	}
+
+	m_avCodec = NULL;
 
 	return true;
 }

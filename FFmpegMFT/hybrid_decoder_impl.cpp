@@ -34,24 +34,23 @@ bool hybrid_decoder_impl::init(std::string codecName, DWORD pixel_format)
 	        break;
 	    }
 
-		AVCodec* avCodec = NULL; 
 		/* find the video decoder according to codecName*/
 		/* currently support only HEVC or H.264*/
 		if(codecName.compare("HEVC") == 0)
-			avCodec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
+			m_avCodec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
 		else
-			avCodec = avcodec_find_decoder(AV_CODEC_ID_H264);
+			m_avCodec = avcodec_find_decoder(AV_CODEC_ID_H264);
 
-	    if (avCodec == NULL) {
+	    if (m_avCodec == NULL) {
 			bRet = false;
 			break;
 	    }
 
 		for (int i = 0;; i++) {
-	        const AVCodecHWConfig *config = avcodec_get_hw_config(avCodec, i);
+	        const AVCodecHWConfig *config = avcodec_get_hw_config(m_avCodec, i);
 	        if (!config) {
 	            Logger::getInstance().LogWarn("Decoder %s does not support device type %s.",
-	                    avCodec->name, av_hwdevice_get_type_name(type));
+	                    m_avCodec->name, av_hwdevice_get_type_name(type));
 	            bRet = false;
 	        	break;
 	        }
@@ -65,8 +64,8 @@ bool hybrid_decoder_impl::init(std::string codecName, DWORD pixel_format)
 		if(bRet == false)
 			break;
 
-		if (!(m_avContext = avcodec_alloc_context3(avCodec))){
-			Logger::getInstance().LogWarn("Failed to create context for Decoder %s.",avCodec->name);
+		if (!(m_avContext = avcodec_alloc_context3(m_avCodec))){
+			Logger::getInstance().LogWarn("Failed to create context for Decoder %s.",m_avCodec->name);
 			bRet = false;
 			break;
 		}
@@ -82,7 +81,7 @@ bool hybrid_decoder_impl::init(std::string codecName, DWORD pixel_format)
 	    }
 	    m_avContext->hw_device_ctx = av_buffer_ref(m_hw_device_ctx);
 
-		if ((avcodec_open2(m_avContext, avCodec, NULL)) < 0) {
+		if ((avcodec_open2(m_avContext, m_avCodec, NULL)) < 0) {
 	        Logger::getInstance().LogWarn("Failed to open codec for stream.");
 			bRet = false;
 	    	break;

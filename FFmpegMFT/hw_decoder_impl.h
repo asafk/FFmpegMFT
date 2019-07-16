@@ -28,7 +28,12 @@ private:
 	AVBufferRef *m_hw_device_ctx;
 	enum AVPixelFormat m_hw_pix_fmt;
 
-	static AVPixelFormat get_hw_format(AVCodecContext* ctx, const enum AVPixelFormat*	pix_fmts);
+	static AVPixelFormat get_hw_format(AVCodecContext* ctx, const enum AVPixelFormat* pix_fmts);
 	AVPixelFormat get_hw_format_internal(AVCodecContext* ctx, const enum AVPixelFormat*	pix_fmts);
+
+	long m_numOfSurfaces;
+
+	int init_hwaccel(AVCodecContext* ctx, enum AVPixelFormat hw_pix_fmt);
+	int reinit();
 };
 
