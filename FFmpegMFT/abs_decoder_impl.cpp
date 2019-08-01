@@ -6,7 +6,8 @@
 
 void abs_decoder_impl::log_callback(void* ptr, int level, const char* fmt, va_list vargs)
 {
-	abs_decoder_impl* this_pointer = static_cast<abs_decoder_impl*>(ptr);
+	AVCodecContext* avcl = static_cast<AVCodecContext *>(ptr);
+	abs_decoder_impl* this_pointer = static_cast<abs_decoder_impl *>(avcl->opaque);
     if(this_pointer != NULL) this_pointer->log(level, fmt, vargs);
 }
 

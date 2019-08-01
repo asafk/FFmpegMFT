@@ -8,7 +8,7 @@ hw_decoder_impl::hw_decoder_impl(IDirect3DDeviceManager9* deviceManager9):
 m_deviceManager9(deviceManager9),
 m_hw_device_ctx(NULL),
 m_hw_pix_fmt(AV_PIX_FMT_NONE),
-m_numOfSurfaces(4)
+m_numOfSurfaces(5)
 {
 	Logger::getInstance().LogInfo("Mode HW is active");
 }
@@ -63,7 +63,7 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 		}
 
 		if (!(m_avContext = avcodec_alloc_context3(m_avCodec))){
-			Logger::getInstance().LogError("Failed to create context for Decoder %s.",m_avCodec->name);
+			Logger::getInstance().LogError("Failed to create context for Decoder %s.", m_avCodec->name);
 			bRet = false;
 			break;
 		}
@@ -148,10 +148,11 @@ bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int
 	bool bRet = true;
 	const long latsNumOfSurfaces = m_numOfSurfaces;
     int ret = 0;
+	bool bFirstTimeDecoded = true;
 
 	do
 	{
-decode_again:
+decode_again:		
 		m_avPkt->data = in;
 		m_avPkt->size = in_size;
 
@@ -159,19 +160,31 @@ decode_again:
 		if (ret < 0) {
 			if(m_avCodec->id == AV_CODEC_ID_H264)
 			{
-				if(ret == AVERROR_INVALIDDATA/* this is miss indication from h264dec*/)
+				/* This is miss indication from h264dec FFmpeg library
+				 * When return code will be AVERROR(ENOMEM), we can remove the first time decode and retry decoded again
+				 * FIXME: ret == AVERROR_INVALIDDATA => ret == AVERROR(ENOMEM)
+				 */
+				if(ret == AVERROR_INVALIDDATA)
 				{
-					Logger::getInstance().LogInfo("Reach the surface collection limit (count = %d), will re-init and increase by 1", m_numOfSurfaces++);
+					if(bFirstTimeDecoded)
+					{
+						Logger::getInstance().LogWarn("Reach the surface collection limit (count = %d), increase by 1, and try decode the frame again", m_numOfSurfaces++);
 
-					m_avContext->pix_fmt = AV_PIX_FMT_NONE;
-					goto decode_again;
+						m_avContext->pix_fmt = AV_PIX_FMT_NONE;
+						bFirstTimeDecoded = false;
+						goto decode_again;						
+					}
+					
+					Logger::getInstance().LogWarn("Reach the surface collection limit (count = %d), decode second time didn't succeeded, re-init", m_numOfSurfaces++);
+					reinit();
+					break;
 				}				
 			}
 			else 
 			{
 				if(ret == AVERROR(ENOMEM))
 				{
-					Logger::getInstance().LogInfo("Reach the surface collection limit (count = %d), will re-init and increase by 1", m_numOfSurfaces++);
+					Logger::getInstance().LogWarn("Reach the surface collection limit (count = %d), will re-init and increase by 1", m_numOfSurfaces++);
 					reinit();
 					break;
 				}				
@@ -182,7 +195,7 @@ decode_again:
 		}
 
         ret = avcodec_receive_frame(m_avContext, m_avFrame);
-        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF){			
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF){	
             break;
 		}
         else if (ret < 0) {
