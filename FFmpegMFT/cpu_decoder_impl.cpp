@@ -60,13 +60,6 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 		DWORD uvHeight = height / 2;
 		LONG uvPitch = pitch / 2;
 
-		//validation check
-		if(pitch < yStride){
-			Logger::getInstance().LogWarn("Decoded resolution %dX%d not suitable to expected resolution (stride=%d)",
-				m_avFrame->width, m_avFrame->height, pitch);
-			break;
-		}
-
 		for (DWORD row = 0; row < height; row++)
 			memcpy((BYTE*)out + row * pitch, &pY[row * yStride], yStride);		
 
