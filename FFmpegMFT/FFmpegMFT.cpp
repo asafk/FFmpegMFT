@@ -291,6 +291,15 @@ HRESULT FFmpegMFT::GetOutputStreamInfo(
         // Size of the samples returned by the MFT.  Since the MFT provides its own samples,
         // this value must be zero.
         pStreamInfo->cbSize = 0;
+
+		if(m_pOutputType && m_pdxVideoDecoderService == NULL)
+		{
+			UINT32 width, height;
+			hr = MFGetAttributeSize(m_pOutputType, MF_MT_FRAME_SIZE, &width, &height);
+			BREAK_ON_FAIL(hr);
+
+			pStreamInfo->cbSize = (height + (height / 2)) * width;
+		}
     }
     while(false);
 
@@ -1011,6 +1020,17 @@ HRESULT FFmpegMFT::ProcessOutput(
 			hr = outputSample->GetBufferByIndex(0, &pOutputMediaBuffer);
 			BREAK_ON_FAIL(hr);
 
+			DWORD pcbMaxLength;
+			hr = pOutputMediaBuffer->GetMaxLength(&pcbMaxLength);
+			BREAK_ON_FAIL(hr);
+
+			if(pcbMaxLength <= 0)
+			{
+				hr = MF_E_INSUFFICIENT_BUFFER;
+				Logger::getInstance().LogError("FFmpegMFT::ProcessOutput output buffer has 0 size! can't decode on this buffer.");
+				BREAK_ON_FAIL(hr);
+			}
+
 			//do the decoding
 			hr = decode(pInputMediaBuffer,pOutputMediaBuffer);
 			BREAK_ON_FAIL(hr);
@@ -1289,7 +1309,7 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
 		else
 		{
 			// set the subtype of the video type by index.  The indexes of the media types
-	        // that are supported by this MFT are:  1 - YV12, 0 - NV12
+	        // that are supported by this MFT are: 2 - YUY2, 1 - YV12, 0 - NV12
     		if(dwTypeIndex == 0)
 	        {
 	            hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_NV12);
@@ -1298,6 +1318,10 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
 	        {
 	            hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_YV12);
 	        }
+			else if(dwTypeIndex == 2)
+			{
+				hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_YUY2);
+			}
 	        else 
 	        { 
 	            // if we don't have any more media types, return an error signifying
@@ -1410,8 +1434,8 @@ HRESULT FFmpegMFT::CheckOutputMediaType(IMFMediaType* pmt)
 		else
 		{
 			// verify that the specified media type has one of the acceptable subtypes -
-	        // this filter will accept only NV12 and YV12 uncompressed subtypes.
-	        if(subtype != MFVideoFormat_NV12 && subtype != MFVideoFormat_YV12)
+	        // this filter will accept only NV12, YV12 and YUY2 uncompressed subtypes.
+	        if(subtype != MFVideoFormat_NV12 && subtype != MFVideoFormat_YV12 && subtype != MFVideoFormat_YUY2)
 	        {
 	            hr = MF_E_INVALIDMEDIATYPE;
 	        }

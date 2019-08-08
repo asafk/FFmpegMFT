@@ -173,8 +173,8 @@ bool hybrid_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int
 		}
 
 		DWORD height = m_avFrame->height;
-		DWORD yStride = m_avFrame->width;
-		DWORD uvStride =  m_avFrame->width / 2;
+		DWORD yStride = m_avFrame->linesize[0];
+		DWORD uvStride =  m_avFrame->linesize[1];
 		BYTE* pY = m_avFrame->data[0];
 
 		//Interleave UV from GPU
@@ -184,59 +184,94 @@ bool hybrid_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int
 		BYTE* pU = m_avFrame->data[2];
 
 		DWORD uvHeight = height / 2;
-		LONG uvPitch = pitch / 2;
+		LONG uvPitch = pitch / 2;			
 
-		//validation check
-		if(pitch < yStride){
-			Logger::getInstance().LogWarn("Decoded resolution %dX%d not suitable to expected resolution (stride=%d)",
-				m_avFrame->width, m_avFrame->height, pitch);
-			break;
-		}
+		if (FCC('NV12') == m_dwPixelFmt || FCC('YV12') == m_dwPixelFmt)
+		{
+			Logger::getInstance().LogDebug("hybrid_decoder_impl::decode (NV12) || (YV12)");
 
-		for (DWORD row = 0; row < height; row++)
-			memcpy((BYTE*)out + row * pitch, &pY[row * yStride], yStride);		
+			for (DWORD row = 0; row < height; row++)
+				memcpy((BYTE*)out + row * pitch, &pY[row * yStride], yStride);
 
-		if(FCC('NV12') == m_dwPixelFmt) {
-			BYTE* pUVBuffer = (BYTE*)out + height * pitch;
+			if (FCC('NV12') == m_dwPixelFmt)
+			{
+				Logger::getInstance().LogDebug("hybrid_decoder_impl::decode (NV12)");
 
-			for (DWORD row = 0; row < uvHeight; row++){
-				for(int col = 0; col < m_avFrame->linesize[1]; col++){
-					if(bGpuDecode){
-						pUVBuffer[row * pitch + col] = pUV[row * yStride + col];
-					} else {
-						pUVBuffer[row * pitch + col*2] = pV[row * uvStride + col];
-						pUVBuffer[row * pitch + col*2 + 1] = pU[row * uvStride + col];
+				BYTE* pUVBuffer = (BYTE*)out + height * pitch;
+
+				for (DWORD row = 0; row < uvHeight; row++) {
+					for (int col = 0; col < uvStride; col++) {
+						if (bGpuDecode) {
+							pUVBuffer[row * pitch + col] = pUV[row * yStride + col];
+						}
+						else
+						{
+							pUVBuffer[row * pitch + col * 2] = pV[row * uvStride + col];
+							pUVBuffer[row * pitch + col * 2 + 1] = pU[row * uvStride + col];
+						}
 					}
+				}
+			}
+			else /*if (FCC('YV12') == m_dwPixelFmt)*/
+			{
+				Logger::getInstance().LogDebug("hybrid_decoder_impl::decode (YV12)");
+
+				BYTE* pUBuffer = (BYTE*)out + height * pitch;
+
+				if (bGpuDecode)
+				{
+					for (DWORD row = 0; row < uvHeight; row++) {
+						for (int col = 0; col < uvStride; col++) {
+							if (col % 2 != 0) pUBuffer[row * uvPitch + col / 2] = pUV[row * yStride + col];
+						}
+					}
+				}
+				else 
+				{
+					for (DWORD row = 0; row < uvHeight; row++)
+						memcpy(pUBuffer + row * uvPitch, &pU[row * uvStride], uvStride);
+				}
+
+				BYTE* pVBuffer = pUBuffer + height * pitch / 4;
+
+				if (bGpuDecode) {
+					for (DWORD row = 0; row < uvHeight; row++) {
+						for (int col = 0; col < uvStride; col++) {
+							if (col % 2 == 0) pVBuffer[row * uvPitch + col / 2] = pUV[row * yStride + col];
+						}
+					}
+				}
+				else 
+				{
+					for (DWORD row = 0; row < uvHeight; row++)
+						memcpy(pVBuffer + row * uvPitch, &pV[row * uvStride], uvStride);
 				}
 			}
 		}
-		else if(FCC('YV12') == m_dwPixelFmt) {
-			BYTE* pUBuffer = (BYTE*)out + height * pitch;
+		else if(FCC('YUY2') == m_dwPixelFmt)
+		{
+			Logger::getInstance().LogDebug("hybrid_decoder_impl::decode (YUY2)");
+			BYTE* pYUYVBuffer = (BYTE*)out;
+			for (DWORD row = 0; row < height; row++){
+				for(DWORD col = 0; col < yStride; col++){
+					pYUYVBuffer[row * pitch + col*2] = pY[row * yStride + col];
+				}
 
-			if(bGpuDecode){
-				for (DWORD row = 0; row < uvHeight; row++){
-					for(int col = 0; col < m_avFrame->linesize[1]; col++){
-						if(col % 2 != 0) pUBuffer[row * uvPitch + col/2] = pUV[row * yStride + col];
+				for (int col = 0; col < uvStride; col++) {
+					if (bGpuDecode) {
+						pYUYVBuffer[row * pitch + col*4 + 1] = pUV[row / 2 * uvStride + col*2];
+						pYUYVBuffer[row * pitch + col*4 + 3] = pUV[row / 2 * uvStride + col*2 + 1];
+					}
+					else
+					{
+						pYUYVBuffer[row * pitch + col*4 + 1] = pV[row / 2 * uvStride + col];
+						pYUYVBuffer[row * pitch + col*4 + 3] = pU[row / 2 * uvStride + col];
 					}
 				}
-			} else {
-				for (DWORD row = 0; row < uvHeight; row++)
-					memcpy(pUBuffer + row * uvPitch, &pU[row * uvStride], uvStride);
 			}
-
-			BYTE* pVBuffer = pUBuffer + height * pitch / 4;
-
-			if(bGpuDecode){
-				for (DWORD row = 0; row < uvHeight; row++){
-					for(int col = 0; col < m_avFrame->linesize[1]; col++){
-						if(col % 2 == 0) pVBuffer[row * uvPitch + col/2] = pUV[row * yStride + col];
-					}
-				}
-			} else {
-				for (DWORD row = 0; row < uvHeight; row++)
-					memcpy(pVBuffer + row * uvPitch, &pV[row * uvStride], uvStride);
-			}
-		} else {
+		}
+		else 
+		{
 			Logger::getInstance().LogError("Unknown pixel format &d", m_dwPixelFmt);
 		}
 	}

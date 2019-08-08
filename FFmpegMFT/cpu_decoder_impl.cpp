@@ -60,37 +60,61 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 		DWORD uvHeight = height / 2;
 		LONG uvPitch = pitch / 2;
 
-		for (DWORD row = 0; row < height; row++)
-			memcpy((BYTE*)out + row * pitch, &pY[row * yStride], yStride);		
-
-		if(FCC('NV12') == m_dwPixelFmt)
+		if(FCC('NV12') == m_dwPixelFmt || FCC('YV12') == m_dwPixelFmt)
 		{
-			BYTE* pUVBuffer = (BYTE*)out + height * pitch;
+			Logger::getInstance().LogDebug("cpu_decoder_impl::decode (NV12) || (YV12)");
 
-			for (DWORD row = 0; row < uvHeight; row++){
-				for(int col = 0; col < uvStride; col++){
+			for (DWORD row = 0; row < height; row++)
+				memcpy((BYTE*)out + row * pitch, &pY[row * yStride], yStride);
 
-					pUVBuffer[row * pitch + col*2] = pV[row * uvStride + col];
-					pUVBuffer[row * pitch + col*2 + 1] = pU[row * uvStride + col];
+			if(FCC('NV12') == m_dwPixelFmt)
+			{
+				Logger::getInstance().LogDebug("cpu_decoder_impl::decode (NV12)");
+
+				BYTE* pUVBuffer = (BYTE*)out + height * pitch;
+
+				for (DWORD row = 0; row < uvHeight; row++){
+					for(int col = 0; col < uvStride; col++){
+
+						pUVBuffer[row * pitch + col*2] = pV[row * uvStride + col];
+						pUVBuffer[row * pitch + col*2 + 1] = pU[row * uvStride + col];
+					}
 				}
 			}
+			else/* if(FCC('YV12') == m_dwPixelFmt)*/
+			{
+				Logger::getInstance().LogDebug("cpu_decoder_impl::decode (YV12)");
+
+				BYTE* pUBuffer = (BYTE*)out + height * pitch;
+				
+				for (DWORD row = 0; row < uvHeight; row++)
+					memcpy(pUBuffer + row * uvPitch, &pU[row * uvStride], uvStride);
+				
+				BYTE* pVBuffer = pUBuffer + height * pitch / 4;
+				
+				for (DWORD row = 0; row < uvHeight; row++)
+					memcpy(pVBuffer + row * uvPitch, &pV[row * uvStride], uvStride);
+			}
 		}
-		else if(FCC('YV12') == m_dwPixelFmt)
+		else if(FCC('YUY2') == m_dwPixelFmt)
 		{
-			BYTE* pUBuffer = (BYTE*)out + height * pitch;
-			
-			for (DWORD row = 0; row < uvHeight; row++)
-				memcpy(pUBuffer + row * uvPitch, &pU[row * uvStride], uvStride);
-			
-			BYTE* pVBuffer = pUBuffer + height * pitch / 4;
-			
-			for (DWORD row = 0; row < uvHeight; row++)
-				memcpy(pVBuffer + row * uvPitch, &pV[row * uvStride], uvStride);
+			Logger::getInstance().LogDebug("cpu_decoder_impl::decode (YUY2)");
+			BYTE* pYUYVBuffer = (BYTE*)out;
+			for (DWORD row = 0; row < height; row++){
+				for(DWORD col = 0; col < yStride; col++){
+					pYUYVBuffer[row * pitch + col*2] = pY[row * yStride + col];
+				}			
+				for(int col = 0; col < uvStride; col++){
+
+					pYUYVBuffer[row * pitch + col*4 + 1] = pV[row / 2 * uvStride + col];
+					pYUYVBuffer[row * pitch + col*4 + 3] = pU[row / 2 * uvStride + col];
+				}
+			}
 		}
 		else
 		{
 			Logger::getInstance().LogError("Unknown pixel format &d", m_dwPixelFmt);
-		}
+		}		
 #endif
 	}
 	while (false);	
