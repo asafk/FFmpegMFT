@@ -1116,8 +1116,9 @@ HRESULT FFmpegMFT::ProcessOutput(
 			//set output sample time
 			hr = outputSample->SetSampleTime(sampleTime);
 			BREAK_ON_FAIL(hr);			
-		
+#ifdef DEBUG		
     		DebugOut((L"S.t %10I64d DecodeTime= %6.3f\n"),sampleTime, (double)(duration100Nano* 100) / 1000000);
+#endif
 
 		} else { //File container behavior
 
@@ -1130,8 +1131,9 @@ HRESULT FFmpegMFT::ProcessOutput(
 			//set output sample time
 			hr = outputSample->SetSampleTime(m_sampleTime);
 			BREAK_ON_FAIL(hr);			
-		
+#ifdef DEBUG
     		DebugOut((L"S.t %10I64d S.d %10I64d t %10I64d d %10I64d DecodeTime= %6.3f\n"),sampleTime, sampleDuration, m_sampleTime, duration100Nano, (double)(duration100Nano* 100) / 1000000);
+#endif
 		
     		m_sampleTime += sampleDuration;
 		}
@@ -1292,7 +1294,6 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
 
 			GUID format = MFVideoFormat_Base;			
 
-			bool bHasdwTypeIndex = false;
 			if(dwTypeIndex < m_uiNumOfRenderTargetFormats)
 			{
 				m_pRenderTargetFormats[dwTypeIndex];
@@ -1303,6 +1304,7 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
 	        { 
 	            // if we don't have any more media types, return an error signifying
 	            // that there is no media type with that index
+				Logger::getInstance().LogError("FFmpegMFT::GetSupportedOutputMediaType - type index (%d) is out of range. Render target formats length is %d", dwTypeIndex, m_uiNumOfRenderTargetFormats);
 	            hr = MF_E_UNSUPPORTED_D3D_TYPE;
 	        }
 		}

@@ -34,6 +34,5 @@ private:
 	long m_numOfSurfaces;
 
 	int init_hwaccel(AVCodecContext* ctx, enum AVPixelFormat hw_pix_fmt);
-	int reinit();
 };
 

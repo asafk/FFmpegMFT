@@ -8,7 +8,7 @@ hw_decoder_impl::hw_decoder_impl(IDirect3DDeviceManager9* deviceManager9):
 m_deviceManager9(deviceManager9),
 m_hw_device_ctx(NULL),
 m_hw_pix_fmt(AV_PIX_FMT_NONE),
-m_numOfSurfaces(5)
+m_numOfSurfaces(10)
 {
 	Logger::getInstance().LogInfo("Mode HW is active");
 }
@@ -146,50 +146,15 @@ bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int
 	}
 
 	bool bRet = true;
-	const long latsNumOfSurfaces = m_numOfSurfaces;
     int ret = 0;
-	bool bFirstTimeDecoded = true;
 
 	do
 	{
-decode_again:		
 		m_avPkt->data = in;
 		m_avPkt->size = in_size;
 
 		ret = avcodec_send_packet(m_avContext, m_avPkt);		
 		if (ret < 0) {
-			if(m_avCodec->id == AV_CODEC_ID_H264)
-			{
-				/* This is miss indication from h264dec FFmpeg library
-				 * When return code will be AVERROR(ENOMEM), we can remove the first time decode and retry decoded again
-				 * FIXME: ret == AVERROR_INVALIDDATA => ret == AVERROR(ENOMEM)
-				 */
-				if(ret == AVERROR_INVALIDDATA)
-				{
-					if(bFirstTimeDecoded)
-					{
-						Logger::getInstance().LogWarn("Reach the surface collection limit (count = %d), increase by 1, and try decode the frame again", m_numOfSurfaces++);
-
-						m_avContext->pix_fmt = AV_PIX_FMT_NONE;
-						bFirstTimeDecoded = false;
-						goto decode_again;						
-					}
-					
-					Logger::getInstance().LogWarn("Reach the surface collection limit (count = %d), decode second time didn't succeeded, re-init", m_numOfSurfaces++);
-					reinit();
-					break;
-				}				
-			}
-			else 
-			{
-				if(ret == AVERROR(ENOMEM))
-				{
-					Logger::getInstance().LogWarn("Reach the surface collection limit (count = %d), will re-init and increase by 1", m_numOfSurfaces++);
-					reinit();
-					break;
-				}				
-			}
-
 			Logger::getInstance().LogWarn("Error during decoding (avcodec_send_packet)");
 			break;
 		}
@@ -209,7 +174,7 @@ decode_again:
 			break;
 		}
 
-		if(m_avFrame->data[3] != NULL && latsNumOfSurfaces == m_numOfSurfaces)
+		if(m_avFrame->data[3] != NULL)
 		{
 			surface = m_avFrame->data[3];
 		}
@@ -285,26 +250,4 @@ int hw_decoder_impl::init_hwaccel(AVCodecContext* ctx, enum AVPixelFormat hw_pix
     while (false);
 
 	return -1;
-}
-
-int hw_decoder_impl::reinit()
-{
-	bool bRet = true;
-
-	string codec;
-	if(m_avCodec->id == AV_CODEC_ID_HEVC)
-	{
-		codec = "HEVC";
-	}
-	else
-	{
-		codec = "H264";
-	}
-
-	bRet = release();
-	if(!bRet)return bRet;	
-
-	init(codec, m_hw_pix_fmt);
-
-	return bRet;
 }
