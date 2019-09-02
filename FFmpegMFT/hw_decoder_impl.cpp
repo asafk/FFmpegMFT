@@ -8,7 +8,7 @@ hw_decoder_impl::hw_decoder_impl(IDirect3DDeviceManager9* deviceManager9):
 m_deviceManager9(deviceManager9),
 m_hw_device_ctx(NULL),
 m_hw_pix_fmt(AV_PIX_FMT_NONE),
-m_numOfSurfaces(10)
+m_numOfSurfaces(5)
 {
 	Logger::getInstance().LogInfo("Mode HW is active");
 }
