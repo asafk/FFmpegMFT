@@ -1185,7 +1185,7 @@ HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOut
 	}
 	while (false);	
 
-	return bRet ? S_OK : MF_E_UNEXPECTED;//TODO: create meaning error code
+	return bRet ? S_OK : MF_E_TRANSFORM_NEED_MORE_INPUT;
 }
 
 HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IDirect3DSurface9** ppSurface)
@@ -1210,7 +1210,7 @@ HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IDirect3DSurface9** 
 	}
 	while (false);   
 
-	return bRet ? S_OK : MF_E_UNSUPPORTED_D3D_TYPE;
+	return bRet ? S_OK : MF_E_TRANSFORM_NEED_MORE_INPUT;
 }
 
 

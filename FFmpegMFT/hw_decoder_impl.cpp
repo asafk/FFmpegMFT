@@ -169,8 +169,7 @@ bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int
         }
 
 		if (m_avFrame->format != m_hw_pix_fmt) {
-			Logger::getInstance().LogWarn("Decoded frame is SW instead of HW!");
-			bRet = false;
+			Logger::getInstance().LogWarn("Decoded frame is SW instead of HW!, can't provide HW surface");
 			break;
 		}
 
@@ -209,8 +208,7 @@ AVPixelFormat hw_decoder_impl::get_hw_format_internal(AVCodecContext* ctx, const
     }
     Logger::getInstance().LogWarn("Failed to get HW surface format.");
     
-	/* Fallback to default behaviour */
-    return avcodec_default_get_format( ctx, pix_fmts );
+    return AV_PIX_FMT_NONE;
 }
 
 int hw_decoder_impl::init_hwaccel(AVCodecContext* ctx, enum AVPixelFormat hw_pix_fmt)
