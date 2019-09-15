@@ -151,17 +151,16 @@ static void log_callback(void* ptr, int level, const char* fmt, va_list vargs)
 
 		if(Logger::getInstance().IsPiriorityLevelEnabled(normalLevel, Logger::getInstance().FFmpegLibCategory))
 		{
-			const int size = 512;
-			char dbg_out[size];
-			if(strlen(fmt) <= size - 32){
-				vsprintf_s(dbg_out, fmt, vargs);
+			const int size = 1024;
+			char ffmpeg_str[size] = {0};
+			int print_prefix = 1;
 
-				std::string str("FFmpeg: ");
-				str.append(dbg_out);
+			av_log_format_line2(ptr, level, fmt, vargs, ffmpeg_str, size, &print_prefix);
 
-				str.erase(std::remove(str.begin(), str.end(), '\n'), str.end());
-				Logger::getInstance().Log(normalLevel, Logger::getInstance().FFmpegLibCategory, str.c_str());
-			}
+			std::string str(ffmpeg_str);
+
+			str.erase(std::remove(str.begin(), str.end(), '\n'), str.end());
+			Logger::getInstance().Log(normalLevel, Logger::getInstance().FFmpegLibCategory, str.c_str());
 		}
 	}
 	catch (...)

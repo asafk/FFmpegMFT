@@ -8,6 +8,7 @@ public:
 	cpu_decoder_impl();
 	~cpu_decoder_impl();
 
+	bool init(std::string codecName, DWORD pixel_format);
 	bool decode(unsigned char* in, int in_size, void*& out, int pitch);
 #if USE_BUFFER2
 protected:

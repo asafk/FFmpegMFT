@@ -10,6 +10,62 @@ cpu_decoder_impl::~cpu_decoder_impl()
 {
 }
 
+bool cpu_decoder_impl::init(std::string codecName, DWORD pixel_format)
+{
+	bool bRet = true;
+	
+	do
+	{
+		/* find the video decoder according to codecName*/
+		/* currently support only HEVC or H.264*/
+		if(codecName.compare("HEVC") == 0)
+			m_avCodec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
+		else
+			m_avCodec = avcodec_find_decoder(AV_CODEC_ID_H264);
+
+	    if (m_avCodec == NULL) {
+	    	Logger::getInstance().LogError("Failed to to find decoder for codec %s.", codecName);
+			bRet = false;
+			break;
+	    }		
+		
+		m_avContext = avcodec_alloc_context3(m_avCodec);
+		if (m_avContext == NULL){
+			Logger::getInstance().LogError("Failed to create context for Decoder %s.", m_avCodec->name);
+			bRet = false;
+			break;
+		}
+
+		/* open it */
+	    if (avcodec_open2(m_avContext, m_avCodec, NULL) < 0) {
+	    	Logger::getInstance().LogError("Failed to open codec for stream.");
+	        bRet = false;
+			break;
+	    }
+
+		m_avPkt = av_packet_alloc();
+		if (m_avPkt == NULL){
+			Logger::getInstance().LogError("Cannot allocate av_packet.");
+			bRet = false;
+			break;
+		}
+
+		m_avFrame = av_frame_alloc();
+		if (m_avFrame == NULL) {
+			Logger::getInstance().LogError("Cannot allocate av_frame.");
+			bRet = false;
+			break;
+		}
+
+		m_dwPixelFmt = pixel_format;
+
+		Logger::getInstance().LogInfo("SW CodecContext @ %p", (void*)m_avContext);
+	}
+	while (false);        
+
+	return bRet;
+}
+
 bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pitch)
 {
 	//Initialization check

@@ -44,6 +44,7 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 			m_avCodec = avcodec_find_decoder(AV_CODEC_ID_H264);
 
 	    if (m_avCodec == NULL) {
+	    	Logger::getInstance().LogError("Failed to to find decoder for codec %s.", codecName);
 			bRet = false;
 			break;
 	    }
@@ -101,7 +102,7 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 
 	    m_avContext->hw_device_ctx = av_buffer_ref(m_hw_device_ctx);
 
-		if ((avcodec_open2(m_avContext, m_avCodec, NULL)) < 0) {
+		if (avcodec_open2(m_avContext, m_avCodec, NULL) < 0) {
 	        Logger::getInstance().LogError("Failed to open codec for stream.");
 			bRet = false;
 	    	break;
@@ -120,6 +121,8 @@ bool hw_decoder_impl::init(std::string codecName, DWORD pixel_format)
 			bRet = false;
 			break;
 		}
+
+		Logger::getInstance().LogInfo("HW CodecContext @ %p", (void*)m_avContext);
 	}
 	while (false);
 

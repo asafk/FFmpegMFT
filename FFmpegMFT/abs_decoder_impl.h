@@ -12,7 +12,7 @@ public:
 	abs_decoder_impl();
 	virtual ~abs_decoder_impl();
 
-	virtual bool init(std::string codecName, DWORD pixel_format);
+	virtual bool init(std::string codecName, DWORD pixel_format) = 0;
 	virtual bool release();	
 
 	virtual bool decode(unsigned char* in, int in_size, void*& out, int pitch) = 0;
