@@ -167,6 +167,7 @@ regsvr32 $(TargetPath) /s</Command>
   <ItemGroup>
     <ClInclude Include="abs_decoder_impl.h" />
     <ClInclude Include="CBufferLock.h" />
+    <ClInclude Include="Configurator.h" />
     <ClInclude Include="cpu_decoder_impl.h" />
     <ClInclude Include="decoder.h" />
     <ClInclude Include="FFmpegMFT.h" />

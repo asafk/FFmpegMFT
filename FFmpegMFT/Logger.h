@@ -14,12 +14,14 @@ extern "C"
 static void log_callback(void* ptr, int level, const char* fmt, va_list vargs);
 static log4cpp::threading::Mutex g_mutex;
 
+#define PROPERTIES_FILE_STR "FFmpegMFT.dll.properties"
+
 class Logger
 {
 private:
 	Logger()
 	{
-		std::string initFileName = "FFmpegMFT.dll.properties";
+		const std::string initFileName = PROPERTIES_FILE_STR;
 
 		try
 		{

@@ -2,6 +2,7 @@
 #include "hw_decoder_impl.h"
 #include "dbg.h"
 #include "Utils.h"
+#include "Configurator.h"
 
 
 hw_decoder_impl::hw_decoder_impl(IDirect3DDeviceManager9* deviceManager9):
@@ -239,7 +240,7 @@ int hw_decoder_impl::init_hwaccel(AVCodecContext* ctx, enum AVPixelFormat hw_pix
 	    // 17 surface is already included by libavcodec. The field is 0 if the
 	    // hwaccel supports dynamic surface allocation.
 	    if (hw_frame_ctx->initial_pool_size)
-	        hw_frame_ctx->initial_pool_size = m_numOfSurfaces;  
+	        hw_frame_ctx->initial_pool_size = Configurator::getInstance().getInt("GPU.SurfacesCount", m_numOfSurfaces);  
 
 	    if (av_hwframe_ctx_init(ctx->hw_frames_ctx) < 0) {
 	        Logger::getInstance().LogError("Failed to allocate hw frames.");
