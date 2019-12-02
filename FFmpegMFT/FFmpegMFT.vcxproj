@@ -90,14 +90,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;FFMPEGMFT_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(OutDir)..\ffmpeg_4.1\include;$(ProjectDir)log4cpp-1.1.3\log4cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(OutDir)..\ffmpeg\include;$(ProjectDir)log4cpp-1.1.3\log4cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>mfuuid.lib;strmiids.lib;mfplat.lib;mf.lib;evr.lib;shlwapi.lib;avcodec.lib;avformat.lib;avutil.lib;avdevice.lib;avfilter.lib;swresample.lib;swscale.lib;%(AdditionalDependencies);log4cppD.lib</AdditionalDependencies>
+      <AdditionalDependencies>mfuuid.lib;strmiids.lib;mfplat.lib;mf.lib;evr.lib;shlwapi.lib;avcodec.lib;avformat.lib;avutil.lib;avdevice.lib;avfilter.lib;swresample.lib;swscale.lib;log4cppD.lib</AdditionalDependencies>
       <ModuleDefinitionFile>$(TargetName).def</ModuleDefinitionFile>
-      <AdditionalLibraryDirectories>$(OutDir)..\ffmpeg_4.1\build32\lib;$(ProjectDir)log4cpp-1.1.3\log4cpp\Lib\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OutDir)..\ffmpeg\build32\lib;$(ProjectDir)log4cpp-1.1.3\log4cpp\Lib\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>regsvr32 $(TargetPath) /u /s
@@ -112,11 +112,19 @@ regsvr32 $(TargetPath) /s</Command>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;FFMPEGMFT_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(OutDir)..\ffmpeg\include;$(ProjectDir)log4cpp-1.1.3\log4cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(OutDir)..\..\ffmpeg\build64\lib;$(ProjectDir)log4cpp-1.1.3\log4cpp\Lib\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>mfuuid.lib;strmiids.lib;mfplat.lib;mf.lib;evr.lib;shlwapi.lib;avcodec.lib;avformat.lib;avutil.lib;avdevice.lib;avfilter.lib;swresample.lib;swscale.lib;log4cppD.lib</AdditionalDependencies>
+      <ModuleDefinitionFile>$(TargetName).def</ModuleDefinitionFile>
     </Link>
+    <PostBuildEvent>
+      <Command>regsvr32 $(TargetPath) /u /s
+regsvr32 $(TargetPath) /s</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -128,16 +136,16 @@ regsvr32 $(TargetPath) /s</Command>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;FFMPEGMFT_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(OutDir)..\ffmpeg_4.1\include;$(ProjectDir)log4cpp-1.1.3\log4cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(OutDir)..\ffmpeg\include;$(ProjectDir)log4cpp-1.1.3\log4cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>mfuuid.lib;strmiids.lib;mfplat.lib;mf.lib;evr.lib;shlwapi.lib;avcodec.lib;avformat.lib;avutil.lib;avdevice.lib;avfilter.lib;swresample.lib;swscale.lib;%(AdditionalDependencies);log4cppLIB.lib</AdditionalDependencies>
+      <AdditionalDependencies>mfuuid.lib;strmiids.lib;mfplat.lib;mf.lib;evr.lib;shlwapi.lib;avcodec.lib;avformat.lib;avutil.lib;avdevice.lib;avfilter.lib;swresample.lib;swscale.lib;log4cppLIB.lib</AdditionalDependencies>
       <ModuleDefinitionFile>$(TargetName).def</ModuleDefinitionFile>
-      <AdditionalLibraryDirectories>$(OutDir)..\ffmpeg_4.1\build32\lib;$(ProjectDir)log4cpp-1.1.3\log4cpp\Lib\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OutDir)..\ffmpeg\build32\lib;$(ProjectDir)log4cpp-1.1.3\log4cpp\Lib\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImageHasSafeExceptionHandlers>
       </ImageHasSafeExceptionHandlers>
     </Link>
@@ -156,13 +164,21 @@ regsvr32 $(TargetPath) /s</Command>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;FFMPEGMFT_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(OutDir)..\ffmpeg\include;$(ProjectDir)log4cpp-1.1.3\log4cpp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(OutDir)..\ffmpeg\build64\lib;$(ProjectDir)log4cpp-1.1.3\log4cpp\Lib\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>mfuuid.lib;strmiids.lib;mfplat.lib;mf.lib;evr.lib;shlwapi.lib;avcodec.lib;avformat.lib;avutil.lib;avdevice.lib;avfilter.lib;swresample.lib;swscale.lib;log4cppLIB.lib</AdditionalDependencies>
+      <ModuleDefinitionFile>$(TargetName).def</ModuleDefinitionFile>
     </Link>
+    <PostBuildEvent>
+      <Command>regsvr32 $(TargetPath) /u /s
+regsvr32 $(TargetPath) /s</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="abs_decoder_impl.h" />
