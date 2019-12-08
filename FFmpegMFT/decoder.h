@@ -11,7 +11,8 @@ public:
 	bool setDecoderStrategy(IDecoderStrategy* strategy);
 
 	bool init(std::string codecName, DWORD pixel_format);
-	bool release();	
+	bool release();
+	long get_last_error();
 	/*
 	 * decode can used by HW or SW 
 	 * SW :

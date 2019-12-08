@@ -31,6 +31,11 @@ bool Decoder::release()
 	return m_decoderS != NULL ?  m_decoderS->release() : false;
 }
 
+long Decoder::get_last_error()
+{
+	return m_decoderS != NULL ? m_decoderS->get_last_error() : ERR_DECODE_OK;	
+}
+
 void Decoder::flush()
 {
 	m_decoderS != NULL ? m_decoderS->flush(): (void)true;

@@ -1185,7 +1185,23 @@ HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IMFMediaBuffer* pOut
 	}
 	while (false);	
 
-	return bRet ? S_OK : MF_E_TRANSFORM_NEED_MORE_INPUT;
+	if(!bRet)
+	{
+		switch(m_decoder.get_last_error())
+		{
+		case ERR_DECODE_NEM:
+			hr = E_OUTOFMEMORY; 
+			break;
+		case ERR_DECODE_GENERAL:
+			hr = MF_E_TRANSFORM_NEED_MORE_INPUT;
+			break;
+		case ERR_DECODE_OK:
+		default:
+			break;
+		}
+	}
+
+	return hr;
 }
 
 HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IDirect3DSurface9** ppSurface)
@@ -1210,7 +1226,23 @@ HRESULT FFmpegMFT::decode(IMFMediaBuffer* inputMediaBuffer, IDirect3DSurface9** 
 	}
 	while (false);   
 
-	return bRet ? S_OK : MF_E_TRANSFORM_NEED_MORE_INPUT;
+	if(!bRet)
+	{
+		switch(m_decoder.get_last_error())
+		{
+		case ERR_DECODE_NEM:
+			hr = D3DERR_OUTOFVIDEOMEMORY; 
+			break;
+		case ERR_DECODE_GENERAL:
+			hr = MF_E_TRANSFORM_NEED_MORE_INPUT;
+			break;
+		case ERR_DECODE_OK:
+		default:
+			break;
+		}
+	}
+
+	return hr;
 }
 
 
@@ -1305,7 +1337,7 @@ HRESULT FFmpegMFT::GetSupportedOutputMediaType(
 	            // if we don't have any more media types, return an error signifying
 	            // that there is no media type with that index
 				Logger::getInstance().LogError("FFmpegMFT::GetSupportedOutputMediaType - type index (%d) is out of range. Render target formats length is %d", dwTypeIndex, m_uiNumOfRenderTargetFormats);
-	            hr = MF_E_UNSUPPORTED_D3D_TYPE;
+	            hr = MF_E_NO_MORE_TYPES;
 	        }
 		}
 		else

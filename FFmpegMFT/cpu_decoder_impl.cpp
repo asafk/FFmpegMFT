@@ -36,6 +36,9 @@ bool cpu_decoder_impl::init(std::string codecName, DWORD pixel_format)
 			break;
 		}
 
+		m_avContext->opaque = this;
+		m_avContext->get_buffer2 = get_buffer2;
+
 		/* open it */
 	    if (avcodec_open2(m_avContext, m_avCodec, NULL) < 0) {
 	    	Logger::getInstance().LogError("Failed to open codec for stream.");
@@ -75,24 +78,18 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 		return false;
 	}
 
-	int ret;
+	bool bRet = true;
+	int ret = 0;
 
 	do
 	{	
-#if USE_BUFFER2
-		m_outBuffer = out;
-		m_nPitch = pitch;
-
-		m_avContext->opaque = this;
-		m_avContext->get_buffer2 = this->get_buffer2;
-#endif
-
 		m_avPkt->data = in;
 		m_avPkt->size = in_size;
 
 		ret = avcodec_send_packet(m_avContext, m_avPkt);
 		if (ret < 0) {
-			Logger::getInstance().LogWarn("Error during decoding (avcodec_send_packet)");
+			Logger::getInstance().LogWarn("Error during SW decoding (avcodec_send_packet)");
+			bRet = false;
 			break;
 		}			
 
@@ -101,12 +98,10 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
             break;
 		}
         else if (ret < 0) {
-			Logger::getInstance().LogWarn("Error during decoding (avcodec_receive_frame)");
+			Logger::getInstance().LogWarn("Error during SW decoding (avcodec_receive_frame)");
 			break;
         }
 
-#ifdef USE_BUFFER2
-#else
 		DWORD height = m_avFrame->height;
 		DWORD yStride = m_avFrame->linesize[0];
 		DWORD uvStride =  m_avFrame->linesize[1];
@@ -170,39 +165,29 @@ bool cpu_decoder_impl::decode(unsigned char* in, int in_size, void*& out, int pi
 		else
 		{
 			Logger::getInstance().LogError("Unknown pixel format &d", m_dwPixelFmt);
-		}		
-#endif
+		}
+		
+		m_lLastErr = ERR_DECODE_OK;
 	}
 	while (false);	
 
-	return true;
+	return bRet;
 }
 
-#if USE_BUFFER2
 int cpu_decoder_impl::get_buffer2(struct AVCodecContext *s, AVFrame *frame, int flags)
 {
 	cpu_decoder_impl* this_pointer = static_cast<cpu_decoder_impl*>(s->opaque);
     return this_pointer->get_buffer2_internal(s, frame, flags);
 }
 
-static void buffer_free(void* opaque, unsigned char* data)
-{	
-}
-
 int cpu_decoder_impl::get_buffer2_internal(struct AVCodecContext *s, AVFrame *frame, int flags)
 {
-	int nSize = frame->height - frame->crop_bottom;
-	assert(s->codec_type == AVMEDIA_TYPE_VIDEO);
-    frame->data[0] = (BYTE*)m_outBuffer;
-    frame->data[2] = frame->data[0] + nSize * m_nPitch;
-    frame->data[1] = frame->data[2] + nSize / 4 * m_nPitch;
-    frame->linesize[0] = m_nPitch;
-    frame->linesize[1] = m_nPitch / 2;
-    frame->linesize[2] = m_nPitch / 2;
-    frame->buf[0] = av_buffer_create(frame->data[0], frame->linesize[0] * nSize, buffer_free, NULL, 0);
-    frame->buf[1] = av_buffer_create(frame->data[1], frame->linesize[1] * nSize / 2, buffer_free, NULL, 0);
-    frame->buf[2] = av_buffer_create(frame->data[2], frame->linesize[2] * nSize / 2, buffer_free, NULL, 0);
-    return 0;
-	return avcodec_default_get_buffer2(s,frame,flags);
+	const int nRet = avcodec_default_get_buffer2(s,frame,flags);
+	if(nRet < 0)
+	{
+		Logger::getInstance().LogWarn("Out of memory reached, can't allocate next buffer");
+		m_lLastErr = ERR_DECODE_NEM;
+	}
+
+	return nRet;
 }
-#endif

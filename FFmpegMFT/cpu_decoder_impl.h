@@ -10,14 +10,11 @@ public:
 
 	bool init(std::string codecName, DWORD pixel_format);
 	bool decode(unsigned char* in, int in_size, void*& out, int pitch);
-#if USE_BUFFER2
+
 protected:
 
+	/* Use this functions to catch memory allocation error */
 	static int get_buffer2(struct AVCodecContext *c, AVFrame *pic, int flags);
 	int get_buffer2_internal(struct AVCodecContext *c, AVFrame *pic, int flags);
-
-	void* m_outBuffer;
-	int m_nPitch;
-#endif
 };
 

@@ -159,7 +159,8 @@ bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int
 
 		ret = avcodec_send_packet(m_avContext, m_avPkt);		
 		if (ret < 0) {
-			Logger::getInstance().LogWarn("Error during decoding (avcodec_send_packet)");
+			Logger::getInstance().LogWarn("Error during HW decoding (avcodec_send_packet)");
+			bRet = false;
 			break;
 		}
 
@@ -168,7 +169,7 @@ bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int
             break;
 		}
         else if (ret < 0) {
-			Logger::getInstance().LogWarn("Error while decoding (avcodec_receive_frame)");
+			Logger::getInstance().LogWarn("Error while HW decoding (avcodec_receive_frame)");
 			break;
         }
 
@@ -186,6 +187,8 @@ bool hw_decoder_impl::decode(unsigned char* in, int in_size, void*& surface, int
 			Logger::getInstance().LogWarn("Surface is not ready with decoded frame");
 			break;
 		}
+
+		m_lLastErr = ERR_DECODE_OK;
 	}
 	while (false);
 
@@ -203,15 +206,21 @@ AVPixelFormat hw_decoder_impl::get_hw_format_internal(AVCodecContext* ctx, const
 	if(ctx->profile == FF_PROFILE_H264_BASELINE)
 		ctx->hwaccel_flags |= AV_HWACCEL_FLAG_ALLOW_PROFILE_MISMATCH;
 
-	const enum AVPixelFormat *p;
-    for (p = pix_fmts; *p != AV_PIX_FMT_NONE; p++) {
-        if (*p == m_hw_pix_fmt) {
-			init_hwaccel(ctx, *p);
-	        return *p;
-        }    	
-    }
-    Logger::getInstance().LogWarn("Failed to get HW surface format.");
-    
+	do
+	{
+		const enum AVPixelFormat *p;
+	    for (p = pix_fmts; *p != AV_PIX_FMT_NONE; p++) {
+	        if (*p == m_hw_pix_fmt) {
+				if(init_hwaccel(ctx, *p) < 0) {
+					 break;
+				}
+		        return *p;
+	        }    	
+	    }
+	}
+	while(false);
+	
+    Logger::getInstance().LogWarn("Failed to get HW surface format.");    
     return AV_PIX_FMT_NONE;
 }
 
@@ -244,12 +253,13 @@ int hw_decoder_impl::init_hwaccel(AVCodecContext* ctx, enum AVPixelFormat hw_pix
 
 	    if (av_hwframe_ctx_init(ctx->hw_frames_ctx) < 0) {
 	        Logger::getInstance().LogError("Failed to allocate hw frames.");
+	    	m_lLastErr = ERR_DECODE_NEM;
 	        break;
 	    }
 
-	    return 0;
+	    return ERR_DECODE_OK;
     }
     while (false);
 
-	return -1;
+	return ERR_DECODE_GENERAL;
 }

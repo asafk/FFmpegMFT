@@ -6,7 +6,8 @@ m_avCodec(NULL),
 m_avContext(NULL),
 m_avFrame(NULL),
 m_avPkt(NULL),
-m_dwPixelFmt(0)
+m_dwPixelFmt(0),
+m_lLastErr(ERR_DECODE_OK)
 {
 }
 
@@ -37,6 +38,11 @@ bool abs_decoder_impl::release()
 	m_avCodec = NULL;
 
 	return true;
+}
+
+long abs_decoder_impl::get_last_error()
+{
+	return m_lLastErr;
 }
 
 void abs_decoder_impl::flush()
