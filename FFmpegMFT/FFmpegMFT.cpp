@@ -37,6 +37,9 @@ FFmpegMFT::FFmpegMFT(void) :
 #endif
 		);
 	m_pSampleOutMap.clear();
+
+	// increase the count of DLL handles so that freeing the library will not call by COM
+	InterlockedIncrement(&g_dllLockCount);
 }
 
 FFmpegMFT::~FFmpegMFT(void)
