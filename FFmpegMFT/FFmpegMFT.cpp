@@ -888,12 +888,12 @@ HRESULT FFmpegMFT::ProcessMessage(
 			m_decoder.release();
 		    // verify that the specified media type has one of the acceptable subtypes -
 		    // this filter will accept only H.264/HEVC compressed subtypes.
-		    if(InlineIsEqualGUID(subtype_in, MFVideoFormat_H264) == TRUE)
+		    if(InlineIsEqualGUID(subtype_in, MFVideoFormat_H264) == TRUE || InlineIsEqualGUID(subtype_in, MFVideoFormat_V264) == TRUE)
 		    {
 				Logger::getInstance().LogInfo("ProcessMessage - Create H264 Decoder");
 			    hr = m_decoder.init("H264", subtype_out.Data1) != true? S_FALSE : S_OK;
 		    }
-			else if(InlineIsEqualGUID(subtype_in,MFVideoFormat_H265) == TRUE || InlineIsEqualGUID(subtype_in,MFVideoFormat_HEVC) == TRUE )
+			else if(InlineIsEqualGUID(subtype_in,MFVideoFormat_H265) == TRUE || InlineIsEqualGUID(subtype_in,MFVideoFormat_HEVC) == TRUE || InlineIsEqualGUID(subtype_in,MFVideoFormat_V265) == TRUE)
 			{
 				Logger::getInstance().LogInfo("ProcessMessage - Create HEVC Decoder");
 				hr = m_decoder.init("HEVC", subtype_out.Data1) != true? S_FALSE : S_OK;
@@ -1276,9 +1276,17 @@ HRESULT FFmpegMFT::GetSupportedInputMediaType(
         {
             hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264);
         }
-		else if(dwTypeIndex == 1) //HEVC
+    	else if(dwTypeIndex == 1) //HEVC
         {
             hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_HEVC); // MFVideoFormat_H265 from win SDK 10.X and up, now we will support 8.1 SDK
+        }
+		else if(dwTypeIndex == 2) //V264 propriety codec
+        {
+            hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_V264);
+        }		
+    	else if(dwTypeIndex == 3) //V265 propriety codec
+        {
+            hr = pmt->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_V265);
         }
         else 
         { 
@@ -1534,7 +1542,9 @@ HRESULT FFmpegMFT::CheckInputMediaType(IMFMediaType* pmt)
         // this filter will accept only H.264/HEVC compressed subtypes.
         if(InlineIsEqualGUID(subtype, MFVideoFormat_H264) != TRUE && 
 			InlineIsEqualGUID(subtype, MFVideoFormat_H265) != TRUE &&
-			InlineIsEqualGUID(subtype, MFVideoFormat_HEVC) != TRUE )
+			InlineIsEqualGUID(subtype, MFVideoFormat_HEVC) != TRUE &&
+			InlineIsEqualGUID(subtype, MFVideoFormat_V264) != TRUE &&
+			InlineIsEqualGUID(subtype, MFVideoFormat_V265) != TRUE)
         {
             hr = MF_E_INVALIDMEDIATYPE;
         }
@@ -1560,26 +1570,30 @@ HRESULT FFmpegMFT::CheckInputMediaType(IMFMediaType* pmt)
 			for(ui = 0; ui < uiCount; ui++){
 				decoderDeviceGuid = pGuids[ui];
 				//H.264
-				if(InlineIsEqualGUID(subtype, MFVideoFormat_H264) == TRUE ){
-					if(	   InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_A) 
-						|| InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_B)
-						|| InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_C)
-						|| InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_D)
-						|| InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_E)
-						|| InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_F)
-						|| InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_VLD_WithFMOASO_NoFGT)
-						|| InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_VLD_Stereo_Progressive_NoFGT)
-						|| InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_VLD_Stereo_NoFGT)
-						|| InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_VLD_Multiview_NoFGT)){
+				if( InlineIsEqualGUID(subtype, MFVideoFormat_H264) == TRUE || 
+					InlineIsEqualGUID(subtype, MFVideoFormat_V264) == TRUE ){
+					
+					if(	InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_A) ||
+						InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_B) ||
+						InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_C) ||
+						InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_D) ||
+						InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_E) ||
+						InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_F) ||
+						InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_VLD_WithFMOASO_NoFGT) ||
+						InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_VLD_Stereo_Progressive_NoFGT) ||
+						InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_VLD_Stereo_NoFGT) ||
+						InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeH264_VLD_Multiview_NoFGT) ){
 						bFindDecoderGuid = true;
 						break;
 					}
 				}
 				//H.265
-				if(InlineIsEqualGUID(subtype, MFVideoFormat_H265) == TRUE ||
-					InlineIsEqualGUID(subtype, MFVideoFormat_HEVC) == TRUE){
-					if(	   InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeHEVC_VLD_Main) 
-						|| InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeHEVC_VLD_Main10)){
+				if( InlineIsEqualGUID(subtype, MFVideoFormat_H265) == TRUE ||
+					InlineIsEqualGUID(subtype, MFVideoFormat_HEVC) == TRUE ||
+					InlineIsEqualGUID(subtype, MFVideoFormat_V265) == TRUE ){
+					
+					if(	InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeHEVC_VLD_Main) ||
+						InlineIsEqualGUID(decoderDeviceGuid, DXVA2_ModeHEVC_VLD_Main10) ){
 						bFindDecoderGuid = true;
 						break;
 					}
